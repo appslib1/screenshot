@@ -5,15 +5,23 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -22,11 +30,16 @@ import androidx.core.app.NotificationManagerCompat;
 public class MainActivity extends AppCompatActivity {
     static final String CHANNEL_ID = "screenshot_silent_v1";
     static final int NOTIFICATION_ID = 101;
+    private static final String KEY_BTN = "btn";
+    private static final String KEY_NOTIFICATION = "notification";
     private static final String PREFS_NAME = "app_settings";
     private static final String PREF_NAME_AD = "adPrefs";
 
     private Button launch, browse, settings, exit;
     private SharedPreferences prefs;
+    private ActivityResultLauncher<Intent> overlayLauncher;
+    private View floatingButton;
+    private WindowManager windowManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +49,11 @@ public class MainActivity extends AppCompatActivity {
         this.prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         setSupportActionBar(findViewById(R.id.toolbar));
         createNotificationChannel();
+
+        this.overlayLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> handleOverlayResult()
+        );
 
         launch = findViewById(R.id.launch);
         browse = findViewById(R.id.browse);
@@ -56,15 +74,81 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void turnOn() {
-        if (hasNotificationPermission()) {
-            postCaptureNotification();
-            moveTaskToBack(true);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{"android.permission.POST_NOTIFICATIONS"}, 100);
+        boolean showNotif = prefs.getBoolean(KEY_NOTIFICATION, true);
+        boolean showBtn = prefs.getBoolean(KEY_BTN, false);
+
+        if (showNotif) {
+            if (hasNotificationPermission()) {
+                postCaptureNotification();
+                moveTaskToBack(true);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{"android.permission.POST_NOTIFICATIONS"}, 100);
+            } else {
+                postCaptureNotification();
+                moveTaskToBack(true);
+            }
+        } else if (showBtn) {
+            launchFloatingButtonFlow();
+        }
+    }
+
+    private void launchFloatingButtonFlow() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            showFloatingButton();
         } else {
-            postCaptureNotification();
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            overlayLauncher.launch(intent);
+        }
+    }
+
+    private void handleOverlayResult() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, R.string.overlayRequired, Toast.LENGTH_SHORT).show();
+        } else {
+            showFloatingButton();
+        }
+    }
+
+    private void showFloatingButton() {
+        try {
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            LayoutInflater inflater = LayoutInflater.from(this);
+            floatingButton = inflater.inflate(R.layout.floating_button, null);
+
+            int layoutType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    : WindowManager.LayoutParams.TYPE_PHONE;
+
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    layoutType,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    PixelFormat.TRANSLUCENT
+            );
+            params.gravity = Gravity.BOTTOM | Gravity.END;
+
+            ImageButton imgBtn = floatingButton.findViewById(R.id.floatingButton);
+            imgBtn.setOnClickListener(v -> {
+                removeFloatingButton();
+                Intent trigger = new Intent(MainActivity.this, CaptureTriggerActivity.class);
+                trigger.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(trigger);
+            });
+
+            windowManager.addView(floatingButton, params);
             moveTaskToBack(true);
+        } catch (Exception ignored) {}
+    }
+
+    private void removeFloatingButton() {
+        if (windowManager != null && floatingButton != null) {
+            try {
+                windowManager.removeView(floatingButton);
+            } catch (Exception ignored) {}
+            floatingButton = null;
         }
     }
 
@@ -158,5 +242,11 @@ public class MainActivity extends AppCompatActivity {
         try {
             startActivity(intent);
         } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onDestroy() {
+        removeFloatingButton();
+        super.onDestroy();
     }
 }

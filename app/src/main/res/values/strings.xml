@@ -5,6 +5,7 @@
     <string name="browse">Your screenshots</string>
     <string name="settings">Settings</string>
     <string name="exit">Exit</string>
+    <string name="overlayRequired">Overlay permission is required!</string>
     <string name="clickToTakeScreenshot">Tap to take screenshot</string>
     <string name="notificationPermissionDenied">Notification permission denied</string>
     <string name="rateOurApp">Rate Our App</string>
