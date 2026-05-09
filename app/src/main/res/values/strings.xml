@@ -31,6 +31,14 @@
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="shareImg">Share Image</string>
+    <string name="mainSettings">Main settings</string>
+    <string name="ScreenshotFromNotification">Screenshot from notification</string>
+    <string name="enableNotification">Enable this option to begin capturing screenshots from the notification bar, when the notification is clicked, a screenshot will be taken.</string>
+    <string name="ScreenshotFromButton">Screenshot from overlay button</string>
+    <string name="enableButton">Enable this option to begin capturing screenshots from the overlay button, when the button is clicked, a screenshot will be taken.</string>
+    <string name="moreSettings">More settings</string>
+    <string name="enableAudio">Enable audio on screenshot capture.</string>
+    <string name="enableSound">Enable this option to play screenshot sound when a screenshot is taken</string>
 
 
 
