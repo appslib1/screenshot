@@ -5,19 +5,13 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -38,8 +32,6 @@ public class MainActivity extends AppCompatActivity {
     private Button launch, browse, settings, exit;
     private SharedPreferences prefs;
     private ActivityResultLauncher<Intent> overlayLauncher;
-    private View floatingButton;
-    private WindowManager windowManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,7 +87,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void launchFloatingButtonFlow() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
-            showFloatingButton();
+            FloatingButton.show(this);
+            moveTaskToBack(true);
         } else {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
@@ -107,48 +100,8 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             Toast.makeText(this, R.string.overlayRequired, Toast.LENGTH_SHORT).show();
         } else {
-            showFloatingButton();
-        }
-    }
-
-    private void showFloatingButton() {
-        try {
-            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-            LayoutInflater inflater = LayoutInflater.from(this);
-            floatingButton = inflater.inflate(R.layout.floating_button, null);
-
-            int layoutType = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                    : WindowManager.LayoutParams.TYPE_PHONE;
-
-            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    layoutType,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    PixelFormat.TRANSLUCENT
-            );
-            params.gravity = Gravity.BOTTOM | Gravity.END;
-
-            ImageButton imgBtn = floatingButton.findViewById(R.id.floatingButton);
-            imgBtn.setOnClickListener(v -> {
-                removeFloatingButton();
-                Intent trigger = new Intent(MainActivity.this, CaptureTriggerActivity.class);
-                trigger.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(trigger);
-            });
-
-            windowManager.addView(floatingButton, params);
+            FloatingButton.show(this);
             moveTaskToBack(true);
-        } catch (Exception ignored) {}
-    }
-
-    private void removeFloatingButton() {
-        if (windowManager != null && floatingButton != null) {
-            try {
-                windowManager.removeView(floatingButton);
-            } catch (Exception ignored) {}
-            floatingButton = null;
         }
     }
 
@@ -244,9 +197,4 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
-    @Override
-    protected void onDestroy() {
-        removeFloatingButton();
-        super.onDestroy();
-    }
 }

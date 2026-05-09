@@ -51,6 +51,7 @@ public class ScreenshotService extends Service {
     private HandlerThread handlerThread;
     private Handler handler;
     private boolean capturing;
+    private String mode = CaptureTriggerActivity.MODE_NOTIFICATION;
 
     @Override
     public void onCreate() {
@@ -70,12 +71,19 @@ public class ScreenshotService extends Service {
             return START_NOT_STICKY;
         }
 
+        if (capturing || projection != null) {
+            Log.w(TAG, "init intent ignored - capture already in flight");
+            return START_NOT_STICKY;
+        }
+
         int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0);
         Intent data = intent.getParcelableExtra(EXTRA_RESULT_DATA);
         if (data == null) {
             stopSelf();
             return START_NOT_STICKY;
         }
+        String m = intent.getStringExtra(CaptureTriggerActivity.EXTRA_MODE);
+        if (m != null) mode = m;
 
         startForegroundCompat();
 
@@ -195,9 +203,15 @@ public class ScreenshotService extends Service {
             done.putExtra(CaptureTriggerActivity.EXTRA_PATH, pathOrNull);
         }
         sendBroadcast(done);
-        Log.d(TAG, "broadcast CAPTURE_DONE path=" + pathOrNull);
-        updateNotificationText(getString(R.string.clickToTakeScreenshot));
-        stopForegroundDetach();
+        Log.d(TAG, "broadcast CAPTURE_DONE path=" + pathOrNull + " mode=" + mode);
+        if (CaptureTriggerActivity.MODE_OVERLAY.equals(mode)) {
+            stopForeground(true);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(NOTIFICATION_ID);
+        } else {
+            updateNotificationText(getString(R.string.clickToTakeScreenshot));
+            stopForegroundDetach();
+        }
         stopSelf();
     }
 
