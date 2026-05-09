@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:aapt="http://schemas.android.com/aapt">
+    <item
+        android:icon="@drawable/baseline_favorite_border_24"
+        android:id="@+id/rate_us"
+        android:title="@string/rate_us"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/share"
+        android:title="@string/shareApp"
+        app:showAsAction="never"/>
+</menu>
