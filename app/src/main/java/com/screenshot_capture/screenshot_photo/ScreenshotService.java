@@ -43,7 +43,7 @@ public class ScreenshotService extends Service {
     public static final String EXTRA_RESULT_CODE = "extra_result_code";
     public static final String EXTRA_RESULT_DATA = "extra_result_data";
 
-    private static final String CHANNEL_ID = "screenshot_channelID";
+    private static final String CHANNEL_ID = "screenshot_silent_v1";
     private static final int NOTIFICATION_ID = 101;
     private static final int COUNTDOWN_SECONDS = 3;
 
@@ -243,7 +243,9 @@ public class ScreenshotService extends Service {
     private void ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Screenshot channel", NotificationManager.IMPORTANCE_DEFAULT);
+                    CHANNEL_ID, "Screenshot channel", NotificationManager.IMPORTANCE_LOW);
+            channel.setSound(null, null);
+            channel.enableVibration(false);
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) nm.createNotificationChannel(channel);
         }
@@ -258,7 +260,9 @@ public class ScreenshotService extends Service {
                 .setSmallIcon(R.drawable.baseline_camera_24)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(text)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
                 .setOngoing(true)
                 .setContentIntent(PendingIntent.getActivity(this, 1, trigger, piFlags))
                 .build();

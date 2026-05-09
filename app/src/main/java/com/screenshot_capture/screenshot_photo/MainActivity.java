@@ -20,7 +20,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 public class MainActivity extends AppCompatActivity {
-    static final String CHANNEL_ID = "screenshot_channelID";
+    static final String CHANNEL_ID = "screenshot_silent_v1";
     static final int NOTIFICATION_ID = 101;
     private static final String PREFS_NAME = "app_settings";
     private static final String PREF_NAME_AD = "adPrefs";
@@ -84,7 +84,9 @@ public class MainActivity extends AppCompatActivity {
                 .setSmallIcon(R.drawable.baseline_camera_24)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(getString(R.string.clickToTakeScreenshot))
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
                 .setOngoing(true)
                 .setContentIntent(contentPi);
 
@@ -95,7 +97,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Screenshot channel", NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Screenshot channel", NotificationManager.IMPORTANCE_LOW);
+            channel.setSound(null, null);
+            channel.enableVibration(false);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }
