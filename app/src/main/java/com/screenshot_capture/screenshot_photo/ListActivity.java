@@ -10,6 +10,9 @@ import android.widget.GridView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +33,15 @@ public class ListActivity extends AppCompatActivity {
 
         // Configuration de la Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
+        this.gridView = findViewById(R.id.gridView);
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            toolbar.setPadding(bars.left, bars.top, bars.right, 0);
+            gridView.setPadding(bars.left, 0, bars.right, bars.bottom);
+            return insets;
+        });
+
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -37,7 +49,6 @@ public class ListActivity extends AppCompatActivity {
         }
 
         // Initialisation de la grille
-        this.gridView = findViewById(R.id.gridView);
         this.mediaAdapter = new MediaAdapter(this, this.mediaList);
         this.gridView.setAdapter(this.mediaAdapter);
 

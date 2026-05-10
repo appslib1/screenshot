@@ -12,14 +12,19 @@ import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
     static final String CHANNEL_ID = "screenshot_silent_v1";
@@ -39,7 +44,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         this.prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        setSupportActionBar(findViewById(R.id.toolbar));
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        LinearLayout contentArea = findViewById(R.id.contentArea);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            toolbar.setPadding(bars.left, bars.top, bars.right, 0);
+            contentArea.setPadding(bars.left, 0, bars.right, bars.bottom);
+            return insets;
+        });
+        setSupportActionBar(toolbar);
         createNotificationChannel();
 
         this.overlayLauncher = registerForActivityResult(

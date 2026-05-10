@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:aapt="http://schemas.android.com/aapt"
+    android:id="@+id/main"
     android:orientation="vertical"
     android:background="@color/white"
     android:layout_width="match_parent"
@@ -14,6 +15,7 @@
         app:title="Settings"
         app:titleTextColor="@color/white"/>
     <LinearLayout
+        android:id="@+id/contentArea"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:layout_width="match_parent"
