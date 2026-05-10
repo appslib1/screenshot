@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
@@ -14,6 +15,7 @@ import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaActionSound;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -46,12 +48,15 @@ public class ScreenshotService extends Service {
     private static final String CHANNEL_ID = "screenshot_silent_v1";
     private static final int NOTIFICATION_ID = 101;
     private static final int COUNTDOWN_SECONDS = 3;
+    private static final String PREFS_NAME = "app_settings";
+    private static final String KEY_SOUND = "sound";
 
     private MediaProjection projection;
     private HandlerThread handlerThread;
     private Handler handler;
     private boolean capturing;
     private String mode = CaptureTriggerActivity.MODE_NOTIFICATION;
+    private MediaActionSound shutterSound;
 
     @Override
     public void onCreate() {
@@ -60,6 +65,8 @@ public class ScreenshotService extends Service {
         handlerThread = new HandlerThread("ScreenshotCapture");
         handlerThread.start();
         handler = new Handler(handlerThread.getLooper());
+        shutterSound = new MediaActionSound();
+        shutterSound.load(MediaActionSound.SHUTTER_CLICK);
     }
 
     @Override
@@ -158,6 +165,7 @@ public class ScreenshotService extends Service {
         reader.setOnImageAvailableListener(r -> {
             Log.d(TAG, "image available");
             r.setOnImageAvailableListener(null, null);
+            playShutterIfEnabled();
             Image image = null;
             String savedPath = null;
             try {
@@ -254,6 +262,13 @@ public class ScreenshotService extends Service {
                 Toast.makeText(this, stringRes, Toast.LENGTH_SHORT).show());
     }
 
+    private void playShutterIfEnabled() {
+        SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (p.getBoolean(KEY_SOUND, true) && shutterSound != null) {
+            try { shutterSound.play(MediaActionSound.SHUTTER_CLICK); } catch (Exception ignored) {}
+        }
+    }
+
     private void ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -303,6 +318,10 @@ public class ScreenshotService extends Service {
             projection = null;
         }
         if (handlerThread != null) handlerThread.quitSafely();
+        if (shutterSound != null) {
+            try { shutterSound.release(); } catch (Exception ignored) {}
+            shutterSound = null;
+        }
         super.onDestroy();
     }
 
