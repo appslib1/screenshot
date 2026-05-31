@@ -28,7 +28,8 @@ import java.util.List;
 
 public class SingleActivity extends AppCompatActivity {
 
-    private ImageButton imageView, homeBtn, browseBtn, shareBtn, deleteBtn;
+    private ImageButton imageView, homeBtn, browseBtn, shareBtn, cropBtn, deleteBtn;
+    private static final int REQUEST_CROP = 1001;
     private File currentImageFile;
     private GestureDetector gestureDetector;
     private List<String> mediaList = new ArrayList<>();
@@ -76,6 +77,7 @@ public class SingleActivity extends AppCompatActivity {
         homeBtn = findViewById(R.id.homeBtn);
         browseBtn = findViewById(R.id.browseBtn);
         shareBtn = findViewById(R.id.shareBtn);
+        cropBtn = findViewById(R.id.cropBtn);
         deleteBtn = findViewById(R.id.deleteBtn);
 
         // Affichage de l'image
@@ -89,7 +91,24 @@ public class SingleActivity extends AppCompatActivity {
         homeBtn.setOnClickListener(v -> startActivity(new Intent(this, MainActivity.class)));
         browseBtn.setOnClickListener(v -> startActivity(new Intent(this, ListActivity.class)));
         shareBtn.setOnClickListener(v -> shareImage(currentImageFile));
+        cropBtn.setOnClickListener(v -> cropImage(currentImageFile));
         deleteBtn.setOnClickListener(v -> deleteImageDialog(currentImageFile));
+    }
+
+    private void cropImage(File file) {
+        if (file == null || !file.exists()) return;
+        Intent intent = new Intent(this, CropActivity.class);
+        intent.putExtra("img_uri", file.getAbsolutePath());
+        startActivityForResult(intent, REQUEST_CROP);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CROP && resultCode == RESULT_OK) {
+            // The file was overwritten with the cropped image — reload it.
+            updateImageDisplay();
+        }
     }
 
     private void loadMediaList() {

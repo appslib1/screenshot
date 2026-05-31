@@ -21,6 +21,9 @@
             android:name=".SingleActivity"
             android:exported="false" />
         <activity
+            android:name=".CropActivity"
+            android:exported="false" />
+        <activity
             android:name=".ListActivity"
             android:exported="false" />
         <activity

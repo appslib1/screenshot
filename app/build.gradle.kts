@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace = "com.screenshot_capture.screenshot_photo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.screenshot_capture.screenshot_photo"
         minSdk = 21
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 17
         versionName = "1.12"
 

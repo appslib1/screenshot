@@ -32,6 +32,13 @@
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="shareImg">Share Image</string>
+    <string name="crop">Crop</string>
+    <string name="cropImage">Crop Image</string>
+    <string name="reset">Reset</string>
+    <string name="save">Save</string>
+    <string name="imageCropped">Image cropped</string>
+    <string name="cropError">Error cropping image</string>
+    <string name="cropInvalidArea">Invalid crop area</string>
     <string name="mainSettings">Main settings</string>
     <string name="ScreenshotFromNotification">Screenshot from notification</string>
     <string name="enableNotification">Enable this option to begin capturing screenshots from the notification bar, when the notification is clicked, a screenshot will be taken.</string>
