@@ -32,6 +32,7 @@
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="shareImg">Share Image</string>
+    <string name="removeButton">Remove button</string>
     <string name="crop">Crop</string>
     <string name="cropImage">Crop Image</string>
     <string name="reset">Reset</string>
