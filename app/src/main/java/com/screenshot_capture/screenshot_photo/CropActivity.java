@@ -3,6 +3,7 @@ package com.screenshot_capture.screenshot_photo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,9 +27,11 @@ public class CropActivity extends AppCompatActivity {
         setContentView(R.layout.activity_crop);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
+        LinearLayout cropBottomBar = findViewById(R.id.cropBottomBar);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.cropRoot), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
+            cropBottomBar.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
             return insets;
         });
         setSupportActionBar(toolbar);
