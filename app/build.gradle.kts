@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.viewpager2)
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.github.bumptech.glide:glide:5.0.5")
     testImplementation(libs.junit)
