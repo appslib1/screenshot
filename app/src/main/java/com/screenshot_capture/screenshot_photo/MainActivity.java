@@ -12,6 +12,7 @@ import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -47,14 +48,18 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         LinearLayout contentArea = findViewById(R.id.contentArea);
+        FrameLayout adContainer = findViewById(R.id.ad_view_container);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(bars.left, bars.top, bars.right, 0);
-            contentArea.setPadding(bars.left, 0, bars.right, bars.bottom);
+            contentArea.setPadding(bars.left, 0, bars.right, 0);
+            adContainer.setPadding(bars.left, 0, bars.right, bars.bottom);
             return insets;
         });
         setSupportActionBar(toolbar);
         createNotificationChannel();
+
+        new BannerAdManager(this).load(R.id.ad_view_container);
 
         this.overlayLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),

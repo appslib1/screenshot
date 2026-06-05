@@ -6,6 +6,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.FrameLayout;
 import android.widget.GridView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,10 +36,12 @@ public class ListActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         this.gridView = findViewById(R.id.gridView);
 
+        FrameLayout adContainer = findViewById(R.id.ad_view_container);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(bars.left, bars.top, bars.right, 0);
-            gridView.setPadding(bars.left, 0, bars.right, bars.bottom);
+            gridView.setPadding(bars.left, 0, bars.right, 0);
+            adContainer.setPadding(bars.left, 0, bars.right, bars.bottom);
             return insets;
         });
 
@@ -54,6 +57,8 @@ public class ListActivity extends AppCompatActivity {
 
         // Chargement initial des médias
         loadMedia();
+
+        new BannerAdManager(this).load(R.id.ad_view_container);
 
         // Clic sur un élément de la grille
         this.gridView.setOnItemClickListener((adapterView, view, position, id) -> openImage(position));

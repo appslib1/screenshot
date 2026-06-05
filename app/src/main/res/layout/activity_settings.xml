@@ -19,7 +19,8 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1">
         <LinearLayout
             android:orientation="vertical"
             android:paddingLeft="20dp"
@@ -112,4 +113,11 @@
                 android:text="@string/enableSound"/>
         </LinearLayout>
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/ad_view_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:minHeight="50dp" />
 </LinearLayout>

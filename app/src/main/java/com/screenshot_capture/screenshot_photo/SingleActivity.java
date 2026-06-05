@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -42,11 +43,13 @@ public class SingleActivity extends AppCompatActivity {
         // Configuration Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         LinearLayout bottomBar = findViewById(R.id.bottomBar);
+        FrameLayout adContainer = findViewById(R.id.ad_view_container);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
-            bottomBar.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
+            bottomBar.setPadding(systemBars.left, 0, systemBars.right, 0);
+            adContainer.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
             return insets;
         });
 
@@ -75,6 +78,8 @@ public class SingleActivity extends AppCompatActivity {
         shareBtn = findViewById(R.id.shareBtn);
         cropBtn = findViewById(R.id.cropBtn);
         deleteBtn = findViewById(R.id.deleteBtn);
+
+        new BannerAdManager(this).load(R.id.ad_view_container);
 
         // Pager pour le swipe horizontal avec effet de glissement
         pagerAdapter = new ScreenshotPagerAdapter(mediaList);

@@ -50,5 +50,8 @@
     <string name="enableSound">Enable this option to play screenshot sound when a screenshot is taken</string>
 
     <string name="appId">ca-app-pub-5592679724436623~7585202933</string>
+    <!-- TODO: Replace with your real banner unit ID before release.
+         This is Google's official test banner ID (safe for development). -->
+    <string name="banner">ca-app-pub-5592679724436623/1827513175</string>
 
 </resources>
