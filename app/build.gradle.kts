@@ -10,8 +10,8 @@ android {
         applicationId = "com.screenshot_capture.screenshot_photo"
         minSdk = 21
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.14"
+        versionCode = 20
+        versionName = "1.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.viewpager2)
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+    // ProcessLifecycleOwner for the App Open ad manager (2.7.0 keeps minSdk 21).
+    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("com.github.bumptech.glide:glide:5.0.5")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

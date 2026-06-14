@@ -93,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
                 postCaptureNotification();
                 moveTaskToBack(true);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                AppOpenAdManager.disableNext();
                 ActivityCompat.requestPermissions(this,
                         new String[]{"android.permission.POST_NOTIFICATIONS"}, 100);
             } else {
@@ -111,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
+            AppOpenAdManager.disableNext();
             overlayLauncher.launch(intent);
         }
     }
@@ -212,6 +214,7 @@ public class MainActivity extends AppCompatActivity {
                     Uri.parse("package:" + getPackageName()));
         }
         try {
+            AppOpenAdManager.disableNext();
             startActivity(intent);
         } catch (Exception ignored) {}
     }

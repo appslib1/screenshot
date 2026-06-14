@@ -53,5 +53,8 @@
     <!-- TODO: Replace with your real banner unit ID before release.
          This is Google's official test banner ID (safe for development). -->
     <string name="banner">ca-app-pub-5592679724436623/1827513175</string>
+    <string name="interstitialAd">ca-app-pub-5592679724436623/6873396658</string>
+    <string name="appOpenAd">ca-app-pub-5592679724436623/3216927529</string>
+    <string name="adLoadingWait">Loading ads, please wait…</string>
 
 </resources>

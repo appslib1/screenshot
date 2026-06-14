@@ -130,6 +130,7 @@ public class SingleActivity extends AppCompatActivity {
             intent.setType("image/*");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            AppOpenAdManager.disableNext();
             startActivity(Intent.createChooser(intent, getString(R.string.shareImg)));
         } catch (Exception e) {
             Toast.makeText(this, "Error sharing image", Toast.LENGTH_SHORT).show();

@@ -11,7 +11,10 @@ public class App extends Application {
         super.onCreate();
         // Initialize the AdMob SDK once for the whole app.
         try {
-            MobileAds.initialize(this, initializationStatus -> {});
+            MobileAds.initialize(this, initializationStatus -> {
+                // App Open ad manager observes the process lifecycle (cold start / warm resume).
+                AppOpenAdManager.init(this);
+            });
         } catch (Exception ignored) {
         }
     }
