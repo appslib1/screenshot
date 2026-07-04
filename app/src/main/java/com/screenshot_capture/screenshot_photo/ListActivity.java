@@ -26,23 +26,24 @@ public class ListActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_VIEW_IMAGE = 1001;
     // Code de requête pour la permission de lecture média
     private static final int REQUEST_CODE_READ_MEDIA = 2001;
+    private FrameLayout adContainerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list);
+        adContainerView = findViewById(R.id.ad_view_container);
 
         // Configuration de la Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         this.gridView = findViewById(R.id.gridView);
         this.gridView.setEmptyView(findViewById(R.id.emptyView));
 
-        FrameLayout adContainer = findViewById(R.id.ad_view_container);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(bars.left, bars.top, bars.right, 0);
             gridView.setPadding(bars.left, 0, bars.right, 0);
-            adContainer.setPadding(bars.left, 0, bars.right, bars.bottom);
+            adContainerView.setPadding(bars.left, 0, bars.right, bars.bottom);
             return insets;
         });
 
@@ -135,5 +136,18 @@ public class ListActivity extends AppCompatActivity {
                 this.mediaAdapter.notifyDataSetChanged();
             }
         }
+    }
+
+    // 🛡️ Bannière partagée préchargée : elle suit l'Activity au premier plan (attach/detach sans destroy)
+    @Override
+    protected void onPause() {
+        BannerAdManager.getInstance().hide();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        BannerAdManager.getInstance().showIn(adContainerView);
     }
 }

@@ -26,11 +26,13 @@ public class SettingsActivity extends AppCompatActivity {
     private SwitchMaterial btnSwitch;
     private SwitchMaterial soundSwitch;
     private SharedPreferences prefs;
+    private FrameLayout adContainerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+        adContainerView = findViewById(R.id.ad_view_container);
 
         // Initialisation des préférences (Mode privé)
         this.prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
@@ -42,12 +44,11 @@ public class SettingsActivity extends AppCompatActivity {
     private void setupToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
         LinearLayout contentArea = findViewById(R.id.contentArea);
-        FrameLayout adContainer = findViewById(R.id.ad_view_container);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(bars.left, bars.top, bars.right, 0);
             contentArea.setPadding(bars.left, 0, bars.right, 0);
-            adContainer.setPadding(bars.left, 0, bars.right, bars.bottom);
+            adContainerView.setPadding(bars.left, 0, bars.right, bars.bottom);
             return insets;
         });
         setSupportActionBar(toolbar);
@@ -124,5 +125,17 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+    // 🛡️ Bannière partagée préchargée : elle suit l'Activity au premier plan (attach/detach sans destroy)
+    @Override
+    protected void onPause() {
+        BannerAdManager.getInstance().hide();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        BannerAdManager.getInstance().showIn(adContainerView);
     }
 }

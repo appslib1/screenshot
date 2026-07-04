@@ -34,22 +34,23 @@ public class SingleActivity extends AppCompatActivity {
     private int currentIndex = 0;
     private String fromList;
     private static final int REQUEST_CROP = 1001;
+    private FrameLayout adContainerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_single);
+        adContainerView = findViewById(R.id.ad_view_container);
 
         // Configuration Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         LinearLayout bottomBar = findViewById(R.id.bottomBar);
-        FrameLayout adContainer = findViewById(R.id.ad_view_container);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             bottomBar.setPadding(systemBars.left, 0, systemBars.right, 0);
-            adContainer.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
+            adContainerView.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
             return insets;
         });
 
@@ -221,4 +222,17 @@ public class SingleActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+    // 🛡️ Bannière partagée préchargée : elle suit l'Activity au premier plan (attach/detach sans destroy)
+    @Override
+    protected void onPause() {
+        BannerAdManager.getInstance().hide();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        BannerAdManager.getInstance().showIn(adContainerView);
+    }
+
 }
