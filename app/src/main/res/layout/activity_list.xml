@@ -17,18 +17,48 @@
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
         app:title="@string/app_name"
         app:titleTextColor="@color/white"/>
-    <GridView
-        android:gravity="center"
-        android:id="@+id/gridView"
-        android:padding="0dp"
-        android:clipToPadding="false"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:horizontalSpacing="5dp"
-        android:verticalSpacing="5dp"
-        android:stretchMode="columnWidth"
-        android:numColumns="3"/>
+        android:layout_weight="1">
+
+        <GridView
+            android:gravity="center"
+            android:id="@+id/gridView"
+            android:padding="0dp"
+            android:clipToPadding="false"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:horizontalSpacing="5dp"
+            android:verticalSpacing="5dp"
+            android:stretchMode="columnWidth"
+            android:numColumns="3"/>
+
+        <LinearLayout
+            android:id="@+id/emptyView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:src="@drawable/baseline_photo_library_24"
+                android:contentDescription="@string/noScreenshotsYet"
+                app:tint="@color/darkGray"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/noScreenshotsYet"
+                android:textColor="@color/darkGray"
+                android:textSize="16sp"/>
+        </LinearLayout>
+    </FrameLayout>
 
     <FrameLayout
         android:id="@+id/ad_view_container"

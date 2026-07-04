@@ -35,6 +35,7 @@ public class ListActivity extends AppCompatActivity {
         // Configuration de la Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         this.gridView = findViewById(R.id.gridView);
+        this.gridView.setEmptyView(findViewById(R.id.emptyView));
 
         FrameLayout adContainer = findViewById(R.id.ad_view_container);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
