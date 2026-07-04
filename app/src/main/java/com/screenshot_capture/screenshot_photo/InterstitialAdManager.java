@@ -28,18 +28,8 @@ public class InterstitialAdManager {
 
     private static final String TAG = "InterstitialAdManager";
 
-    private static final int CLICK_THRESHOLD = 3;
-    private static final int MAX_PER_SESSION = 3;
-
-    // calm-down موحّد قبل عرض الإعلان: المستخدم ضغط زر تنقّل ويده ما زالت نشطة، نتركها تستقر
-    private static final long CALM_DOWN_MS = 2500;
-
-    // مهلة أمان لإغلاق اللودر إن تأخر تحميل الإعلان
-    private static final long LOAD_TIMEOUT_MS = 5000;
-
-    // 🛡️ أدنى فاصل زمني بين إعلانين بينيّين (90 ثانية) — يقتل دفعات التنقّل السريع
-    // التي تُظهر الإعلان أثناء إيقاع نقر سريع (أعلى سياقات النقر العرضي)
-    private static final long MIN_INTERVAL_MS = 60_000;
+    private static final int CLICK_THRESHOLD = 2;
+    private static final int MAX_PER_SESSION = 4;
 
     // عدّاد الضغطات الدائم (يصمد أمام قتل العملية) لتنعيم تكرار الظهور
     private static final String PREFS_NAME = "interstitial_ad_prefs";
@@ -134,9 +124,9 @@ public class InterstitialAdManager {
             public void onAdShowedFullScreenContent() {
                 isAdShowing = true;
                 isPendingShow = false;
-                long now = System.currentTimeMillis();
-                AdControl.lastGlobalAdShowTime = now;
-                setLastShowTime(activity, now); // بصمة آخر إعلان بيني للفاصل الزمني الأدنى
+                //long now = System.currentTimeMillis();
+                //AdControl.lastGlobalAdShowTime = now;
+                //setLastShowTime(activity, now); // بصمة آخر إعلان بيني للفاصل الزمني الأدنى
                 if (onHideLoader != null) onHideLoader.run();
                 Log.d(TAG, "Ad Showed");
             }
@@ -147,7 +137,9 @@ public class InterstitialAdManager {
                 interstitialAd = null;
                 setClickCounter(activity, 0);
                 sessionShowCount++;
-                // 🛡️ تم إزالة preload التلقائي هنا لتجنب الطلبات غير المستغلة!
+                // Preload pour la prochaine fois : preload() est idempotent et garde le plafond
+                // de session (sessionShowCount >= MAX_PER_SESSION) → aucune requête gâchée.
+                preload(activity.getApplicationContext(), null);
                 if (onAdClosed != null) onAdClosed.run();
             }
 
@@ -157,6 +149,8 @@ public class InterstitialAdManager {
                 isPendingShow = false;
                 interstitialAd = null;
                 setClickCounter(activity, 0);
+                // Échec d'affichage → on recharge pour ne pas rester sans inventaire.
+                preload(activity.getApplicationContext(), null);
                 if (onHideLoader != null) onHideLoader.run();
                 if (onAdClosed != null) onAdClosed.run();
             }
@@ -186,141 +180,46 @@ public class InterstitialAdManager {
             return;
         }
 
-        // 🛡️ أدنى فاصل زمني منذ آخر إعلان بيني — يمنع الظهور أثناء التنقّل السريع
-        if (System.currentTimeMillis() - getLastShowTime(activity) < MIN_INTERVAL_MS) {
-            Log.d(TAG, "Skip interstitial: min interval not elapsed");
-            fallback.run();
-            return;
-        }
-
-        // 🛡️ cross-format cooldown: لا نعرض إنترستيشال بعد أي إعلان ملء شاشة بفترة قصيرة
-        if (System.currentTimeMillis() - AdControl.lastGlobalAdShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
-            Log.d(TAG, "Skip interstitial: cross-format cooldown active");
-            fallback.run();
-            return;
-        }
-
-        // زيادة عداد الضغطات (دائم عبر SharedPreferences)
+        // On compte le clic AVANT les cooldowns : les clics pendant l'intervalle min ne sont plus perdus
+        // → dès l'intervalle écoulé, le prochain clic affiche directement (compteur déjà au seuil).
         int counter = getClickCounter(activity) + 1;
         setClickCounter(activity, counter);
-
-        // 🛡️ ذكاء التحميل الاستباقي: نحمّل الإعلان قبل الضغطة الأخيرة بواحدة ليصبح جاهزاً عند العتبة
-        if (counter == (CLICK_THRESHOLD - 1)) {
-            Log.d(TAG, "Preloading dynamically 1 click before threshold");
-            preload(activity, null);
+        // Cooldown actif → on NE consomme PAS le compteur : il reste au seuil et le PROCHAIN clic
+        // (une fois le cooldown écoulé) affichera l'ad. Avant, le compteur était remis à 0 à la ligne
+        // setClickCounter(0) puis showAdDirectly bloquait sur ce même cooldown → 1 ad sur 2 « mangée »
+        // (2e clic OK, 4e non, 6e OK...). En vérifiant ici, le clic qualifiant n'est plus gaspillé.
+        if (System.currentTimeMillis() - AdControl.lastGlobalAdShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
+            Log.d(TAG, "Skip interstitial: cooldown active (compteur conservé pour le prochain clic)");
+            fallback.run();
+            return;
         }
 
         if (counter < CLICK_THRESHOLD) {
+            // Préchargement dès le 1er clic (compteur sous le seuil) : l'ad sera prête au clic qui
+            // atteint le seuil → affichage immédiat, et on évite le motif "1er clic requête / skip".
+            if (interstitialAd == null && !isLoading) preload(activity, null);
             fallback.run();
             return;
         }
 
-        isPendingShow = true;
-
-        // إظهار اللودر فوراً لحماية الشاشة وعزل النقرات العشوائية
-        final View loader = createAndShowLoader(activity);
-
-        // 🛡️ استراتيجية التحميل تحت اللودر (إذا لم يكن جاهزاً بعد)
+        // Ad pas prêt → on ne bloque PAS l'utilisateur derrière un loader : on continue (navigation)
+        // et on précharge pour la prochaine fois. Afficher un ad chargé en retard = ad surprise = clics accidentels.
         if (interstitialAd == null) {
-            Log.d(TAG, "Ad not ready yet, loading it under the safe shield...");
-            preload(activity, () -> new Handler(Looper.getMainLooper()).postDelayed(() ->
-                    showAdDirectly(activity, () -> {
-                        removeLoader(loader);
-                        fallback.run();
-                    }, () -> removeLoader(loader)), CALM_DOWN_MS));
-
-            // حماية التجميد الفني: إذا تأخر الإنترنت ولم يتم التحميل، نغلق اللودر ونكمل التطبيق
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (interstitialAd == null && isPendingShow) {
-                    isPendingShow = false;
-                    removeLoader(loader);
-                    fallback.run();
-                    Log.d(TAG, "Ad load timeout under shield. Fallback invoked.");
-                }
-            }, LOAD_TIMEOUT_MS);
-
-        } else {
-            // الإعلان جاهز مسبقاً، ننتظر مهلة الأمان (Calm Down) ثم نعرض
-            new Handler(Looper.getMainLooper()).postDelayed(() ->
-                    showAdDirectly(activity, () -> {
-                        removeLoader(loader);
-                        fallback.run();
-                    }, () -> removeLoader(loader)), CALM_DOWN_MS);
+            Log.d(TAG, "Ad not ready → skip this time, preload for next");
+            // Filet de sécurité : si le préchargement paresseux n'a pas fini à temps, on lance/poursuit
+            // la requête ici (idempotent via isLoading) → l'ad sera prête au prochain clic qualifiant.
+            if (!isLoading) preload(activity, null);
+            fallback.run();
+            return;
         }
+
+        // 🚀 الحماية القصوى: صفر العداد هنا فوراً بمجرد التأكد من أن الإعلان سيعرض!
+        // هذا يضمن عدم تداخل العدادات في أجزاء الثانية القادمة.
+        setClickCounter(activity, 0);
+
+        // Ad prêt : affichage immédiat, sans loader ni délai.
+        isPendingShow = true;
+        showAdDirectly(activity, fallback, null);
     }
 
-    @Nullable
-    private View createAndShowLoader(@NonNull Activity activity) {
-        try {
-            final float highZ = 2000f;
-            View existing = activity.findViewById(R.id.fullscreen_loader_overlay);
-            if (existing != null) {
-                existing.setVisibility(View.VISIBLE);
-                existing.bringToFront();
-                return existing;
-            }
-
-            FrameLayout container = new FrameLayout(activity);
-            container.setBackgroundColor(0xCC000000); // assombrissement (~80%) — un peu transparent, bloque les clics accidentels
-            container.setClickable(true);
-
-            container.setFocusable(true);
-            container.setFocusableInTouchMode(true);
-            container.requestFocus();
-            container.setElevation(highZ);
-            container.setTranslationZ(highZ);
-            container.setOnTouchListener((v, event) -> true);
-
-            float density = activity.getResources().getDisplayMetrics().density;
-
-            LinearLayout box = new LinearLayout(activity);
-            box.setOrientation(LinearLayout.VERTICAL);
-            box.setGravity(Gravity.CENTER);
-
-            ProgressBar pb = new ProgressBar(activity);
-            pb.setIndeterminateTintList(ColorStateList.valueOf(Color.WHITE));
-            int sizePx = (int) (48 * density);
-            box.addView(pb, new LinearLayout.LayoutParams(sizePx, sizePx));
-
-            TextView tv = new TextView(activity);
-            tv.setText(R.string.adLoadingWait);
-            tv.setTextColor(Color.WHITE);
-            tv.setTextSize(14);
-            LinearLayout.LayoutParams tvParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            tvParams.topMargin = (int) (16 * density);
-            box.addView(tv, tvParams);
-
-            FrameLayout.LayoutParams boxParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-            boxParams.gravity = Gravity.CENTER;
-            container.addView(box, boxParams);
-
-            ViewGroup content = activity.findViewById(android.R.id.content);
-            if (content == null) content = activity.findViewById(android.R.id.content);
-
-            if (content != null) {
-                content.addView(container, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                container.bringToFront();
-                return container;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Loader error: " + e.getMessage());
-        }
-        return null;
-    }
-
-    private void removeLoader(@Nullable View loader) {
-        if (loader == null) return;
-        try {
-            if (loader.getId() == R.id.fullscreen_loader_overlay) {
-                loader.setVisibility(View.GONE);
-            } else {
-                ViewGroup parent = (ViewGroup) loader.getParent();
-                if (parent != null) parent.removeView(loader);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Remove loader error: " + e.getMessage());
-        }
-    }
 }

@@ -79,8 +79,6 @@ public class SingleActivity extends AppCompatActivity {
         cropBtn = findViewById(R.id.cropBtn);
         deleteBtn = findViewById(R.id.deleteBtn);
 
-        new BannerAdManager(this).load(R.id.ad_view_container);
-
         // Pager pour le swipe horizontal avec effet de glissement
         pagerAdapter = new ScreenshotPagerAdapter(mediaList);
         viewPager.setAdapter(pagerAdapter);

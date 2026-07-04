@@ -58,8 +58,6 @@ public class ListActivity extends AppCompatActivity {
         // Chargement initial des médias
         loadMedia();
 
-        new BannerAdManager(this).load(R.id.ad_view_container);
-
         // Clic sur un élément de la grille
         this.gridView.setOnItemClickListener((adapterView, view, position, id) -> openImage(position));
     }

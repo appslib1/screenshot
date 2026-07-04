@@ -38,14 +38,14 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
     private static final String TAG = "AppOpenAdManager";
 
     // 🛡️ زيادة مدة البقاء في الخلفية إلى 60 ثانية لفلترة الخروج القصير (مكالمة/إشعار/تبديل سريع) بدقة أعلى
-    private static final long MIN_BACKGROUND_TIME_MS = 60_000;
+    private static final long MIN_BACKGROUND_TIME_MS = 45_000;
 
     // 🛡️ مهلة أمان: إن لم يظهر الإعلان أو يفشل خلال هذه المدة بعد محاولة العرض، نزيل اللودر إجبارياً
     private static final long SHOW_SAFETY_TIMEOUT_MS = 5000;
 
     // Cooldown بين إعلانين لفتح التطبيق (ساعة) — التطبيق يُفتح كثيراً، فتقليل عدد مرات الظهور
     // يخفض النقرات العرضية ويرفع الـ eCPM ويحمي الحساب
-    private static final long COOLDOWN_MS = 60 * 60 * 1000L;
+    private static final long COOLDOWN_MS = 3 * 60 * 1000L;
 
     // صلاحية الإعلان المخزن مؤقتاً (4 ساعات)
     private static final long AD_VALIDITY_MS = 4 * 60 * 60 * 1000L;
@@ -278,7 +278,7 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
             }
 
             FrameLayout container = new FrameLayout(activity);
-            container.setBackgroundColor(0xCC000000); // assombrissement (~80%) — un peu transparent, bloque les clics accidentels
+            container.setBackgroundColor(0xEE000000); // تعتيم أعلى (93%) لمنع تشتيت أو خداع المستخدم بالخلفية
             container.setClickable(true);
             container.setFocusable(true);
             container.setFocusableInTouchMode(true);

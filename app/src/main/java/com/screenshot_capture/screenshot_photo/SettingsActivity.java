@@ -37,8 +37,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         setupToolbar();
         setupSwitches();
-
-        new BannerAdManager(this).load(R.id.ad_view_container);
     }
 
     private void setupToolbar() {

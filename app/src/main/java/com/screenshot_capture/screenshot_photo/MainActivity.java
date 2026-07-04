@@ -59,8 +59,6 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         createNotificationChannel();
 
-        new BannerAdManager(this).load(R.id.ad_view_container);
-
         this.overlayLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> handleOverlayResult()
