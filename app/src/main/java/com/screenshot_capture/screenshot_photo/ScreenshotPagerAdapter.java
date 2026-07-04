@@ -46,15 +46,28 @@ public class ScreenshotPagerAdapter extends RecyclerView.Adapter<ScreenshotPager
     @Override
     public void onBindViewHolder(@NonNull PageViewHolder holder, int position) {
         String imagePath = mediaList.get(position);
-        File file = new File(imagePath);
+
+        // Un item est soit un chemin de fichier (capture de l'appli), soit une URI
+        // content:// (capture de l'appareil via MediaStore). Glide charge les deux ;
+        // la signature de cache diffère selon la source.
+        Object loadModel;
+        ObjectKey signature;
+        if (imagePath.startsWith("content://")) {
+            loadModel = android.net.Uri.parse(imagePath);
+            signature = new ObjectKey(imagePath);
+        } else {
+            File file = new File(imagePath);
+            loadModel = file;
+            // Cache by content: the key changes only when the file is modified
+            // (e.g. after a crop), so cached images load instantly otherwise.
+            signature = new ObjectKey(file.lastModified());
+        }
 
         holder.progressBar.setVisibility(View.VISIBLE);
 
         Glide.with(holder.imageView.getContext())
-                .load(file)
-                // Cache by content: the key changes only when the file is modified
-                // (e.g. after a crop), so cached images load instantly otherwise.
-                .signature(new ObjectKey(file.lastModified()))
+                .load(loadModel)
+                .signature(signature)
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                 .error(R.drawable.baseline_error_outline_24)
                 .fitCenter()

@@ -1,23 +1,21 @@
 package com.screenshot_capture.screenshot_photo;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.FrameLayout;
-import android.widget.GridView;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import java.io.File;
+import android.widget.FrameLayout;
+import android.widget.GridView;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 
 public class ListActivity extends AppCompatActivity {
     private GridView gridView;
@@ -26,6 +24,8 @@ public class ListActivity extends AppCompatActivity {
 
     // Code de requête pour le suivi du résultat
     private static final int REQUEST_CODE_VIEW_IMAGE = 1001;
+    // Code de requête pour la permission de lecture média
+    private static final int REQUEST_CODE_READ_MEDIA = 2001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,11 +56,31 @@ public class ListActivity extends AppCompatActivity {
         this.mediaAdapter = new MediaAdapter(this, this.mediaList);
         this.gridView.setAdapter(this.mediaAdapter);
 
-        // Chargement initial des médias
-        loadMedia();
-
         // Clic sur un élément de la grille
         this.gridView.setOnItemClickListener((adapterView, view, position, id) -> openImage(position));
+
+        // Permission requise pour lire les captures de l'appareil (dossier public « Screenshots »).
+        // On charge d'abord les captures de l'appli, puis on recharge en fusionnant après octroi.
+        if (!ScreenshotLoader.hasReadPermission(this)) {
+            AppOpenAdManager.disableNext(); // le dialogue de permission met l'appli en arrière-plan
+            ActivityCompat.requestPermissions(this,
+                    new String[]{ScreenshotLoader.requiredPermission()}, REQUEST_CODE_READ_MEDIA);
+        }
+
+        // Chargement initial des médias
+        loadMedia();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_READ_MEDIA
+                && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            // Permission accordée → on recharge en incluant les captures de l'appareil.
+            loadMedia();
+        }
     }
 
     @Override
@@ -96,27 +116,10 @@ public class ListActivity extends AppCompatActivity {
     }
 
     private void loadMedia() {
-        // Dossier source (Screenshots dans le cache de l'app)
-        File directory = new File(getCacheDir(), "Screenshots");
-
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-
+        // Fusion des captures de l'appli (cache) + du dossier « Screenshots » de l'appareil,
+        // triées par date décroissante.
         this.mediaList.clear();
-        File[] files = directory.listFiles();
-
-        if (files != null && files.length > 0) {
-            // Trier par date de modification (décroissant : plus récent d'abord)
-            Arrays.sort(files, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
-
-            for (File file : files) {
-                String fileName = file.getName().toLowerCase();
-                if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) {
-                    this.mediaList.add(file.getAbsolutePath());
-                }
-            }
-        }
+        this.mediaList.addAll(ScreenshotLoader.loadAll(this));
         this.mediaAdapter.notifyDataSetChanged();
     }
 

@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -22,7 +23,6 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class SingleActivity extends AppCompatActivity {
@@ -90,6 +90,7 @@ public class SingleActivity extends AppCompatActivity {
             @Override
             public void onPageSelected(int position) {
                 currentIndex = position;
+                updateActionButtons();
             }
         });
 
@@ -101,37 +102,55 @@ public class SingleActivity extends AppCompatActivity {
             Intent intent = new Intent(this, ListActivity.class);
             InterstitialAdManager.getInstance().showWithSafetyLoader(this, () -> startActivity(intent));
         });
-        shareBtn.setOnClickListener(v -> shareImage(getCurrentFile()));
-        cropBtn.setOnClickListener(v -> cropImage(getCurrentFile()));
-        deleteBtn.setOnClickListener(v -> deleteImageDialog(getCurrentFile()));
+        shareBtn.setOnClickListener(v -> shareImage());
+        cropBtn.setOnClickListener(v -> cropImage());
+        deleteBtn.setOnClickListener(v -> deleteImageDialog());
+
+        // État initial des boutons crop/suppression (masqués pour une capture externe).
+        updateActionButtons();
     }
 
-    private File getCurrentFile() {
+    /** Item courant : chemin de fichier (capture appli) ou URI content:// (capture appareil). */
+    private String getCurrentItem() {
         if (currentIndex >= 0 && currentIndex < mediaList.size()) {
-            return new File(mediaList.get(currentIndex));
+            return mediaList.get(currentIndex);
         }
         return null;
     }
 
-    private void loadMediaList() {
-        File folder = new File(getCacheDir(), "Screenshots");
-        File[] files = folder.listFiles();
-        if (files != null && files.length > 0) {
-            // Tri par date décroissante
-            Arrays.sort(files, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
-            for (File file : files) {
-                String name = file.getName().toLowerCase();
-                if (name.endsWith(".jpg") || name.endsWith(".png")) {
-                    mediaList.add(file.getAbsolutePath());
-                }
-            }
-        }
+    /** Fichier courant, uniquement si l'item est une capture modifiable de l'appli ; sinon null. */
+    private File getCurrentFile() {
+        String item = getCurrentItem();
+        return ScreenshotLoader.isEditable(item) ? new File(item) : null;
     }
 
-    private void shareImage(File file) {
-        if (file == null || !file.exists()) return;
+    /** Crop et suppression ne sont possibles que sur les captures de l'appli (fichiers). */
+    private void updateActionButtons() {
+        boolean editable = ScreenshotLoader.isEditable(getCurrentItem());
+        cropBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
+        deleteBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
+    }
+
+    private void loadMediaList() {
+        // Fusion des captures de l'appli (cache) + du dossier « Screenshots » de l'appareil.
+        mediaList.clear();
+        mediaList.addAll(ScreenshotLoader.loadAll(this));
+    }
+
+    private void shareImage() {
+        String item = getCurrentItem();
+        if (item == null) return;
         try {
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileProvider", file);
+            Uri uri;
+            if (ScreenshotLoader.isEditable(item)) {
+                // Capture de l'appli : fichier privé → partagé via FileProvider.
+                File file = new File(item);
+                if (!file.exists()) return;
+                uri = FileProvider.getUriForFile(this, getPackageName() + ".fileProvider", file);
+            } else {
+                // Capture de l'appareil : déjà une URI content:// partageable telle quelle.
+                uri = Uri.parse(item);
+            }
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType("image/*");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
@@ -144,7 +163,9 @@ public class SingleActivity extends AppCompatActivity {
         }
     }
 
-    private void cropImage(File file) {
+    private void cropImage() {
+        // Crop réservé aux captures de l'appli (réécriture du fichier).
+        File file = getCurrentFile();
         if (file == null || !file.exists()) return;
         Intent intent = new Intent(this, CropActivity.class);
         intent.putExtra("img_uri", file.getAbsolutePath());
@@ -160,7 +181,9 @@ public class SingleActivity extends AppCompatActivity {
         }
     }
 
-    private void deleteImageDialog(File file) {
+    private void deleteImageDialog() {
+        // Suppression réservée aux captures de l'appli (fichiers dont l'appli est propriétaire).
+        File file = getCurrentFile();
         if (file == null || !file.exists()) return;
 
         new AlertDialog.Builder(this)
