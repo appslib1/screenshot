@@ -59,6 +59,9 @@ public class SingleActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
 
+        // Préchargement de l'interstitiel pour qu'il soit prêt au clic sur « browse » (idempotent).
+        InterstitialAdManager.getInstance().preload(getApplicationContext(), null);
+
         // Chargement de la liste des médias pour le swipe
         loadMediaList();
 
@@ -92,7 +95,12 @@ public class SingleActivity extends AppCompatActivity {
 
         // Listeners des boutons
         homeBtn.setOnClickListener(v -> startActivity(new Intent(this, MainActivity.class)));
-        browseBtn.setOnClickListener(v -> startActivity(new Intent(this, ListActivity.class)));
+        browseBtn.setOnClickListener(v -> {
+            // Interstitial sur ouverture de la liste (transition naturelle entre activités).
+            // Le manager throttle/skip en interne et rappelle toujours le callback → on navigue dans tous les cas.
+            Intent intent = new Intent(this, ListActivity.class);
+            InterstitialAdManager.getInstance().showWithSafetyLoader(this, () -> startActivity(intent));
+        });
         shareBtn.setOnClickListener(v -> shareImage(getCurrentFile()));
         cropBtn.setOnClickListener(v -> cropImage(getCurrentFile()));
         deleteBtn.setOnClickListener(v -> deleteImageDialog(getCurrentFile()));

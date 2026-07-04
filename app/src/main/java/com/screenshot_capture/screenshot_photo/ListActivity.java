@@ -92,10 +92,7 @@ public class ListActivity extends AppCompatActivity {
         Intent intent = new Intent(this, SingleActivity.class);
         intent.putExtra("img_uri", this.mediaList.get(position));
         intent.putExtra("fromList", "yes");
-        // Interstitial on opening a screenshot (completed action + natural transition).
-        // The manager throttles/skips internally and always calls back, so we navigate either way.
-        InterstitialAdManager.getInstance().showWithSafetyLoader(this,
-                () -> startActivityForResult(intent, REQUEST_CODE_VIEW_IMAGE));
+        startActivityForResult(intent, REQUEST_CODE_VIEW_IMAGE);
     }
 
     private void loadMedia() {

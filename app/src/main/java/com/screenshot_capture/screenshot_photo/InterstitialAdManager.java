@@ -28,7 +28,7 @@ public class InterstitialAdManager {
 
     private static final String TAG = "InterstitialAdManager";
 
-    private static final int CLICK_THRESHOLD = 2;
+    private static final int CLICK_THRESHOLD = 1;
     private static final int MAX_PER_SESSION = 4;
 
     // عدّاد الضغطات الدائم (يصمد أمام قتل العملية) لتنعيم تكرار الظهور
