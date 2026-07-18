@@ -3,6 +3,7 @@ package com.screenshot_capture.screenshot_photo;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,6 +22,10 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,12 +40,14 @@ public class SingleActivity extends AppCompatActivity {
     private String fromList;
     private static final int REQUEST_CROP = 1001;
     private FrameLayout adContainerView;
+    private AdView adView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_single);
         adContainerView = findViewById(R.id.ad_view_container);
+        loadBanner();
 
         // Configuration Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -222,17 +229,42 @@ public class SingleActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-    // 🛡️ Bannière partagée préchargée : elle suit l'Activity au premier plan (attach/detach sans destroy)
+
+    private void loadBanner() {
+        if (adContainerView == null) return;
+        adView = new AdView(this);
+        adView.setAdUnitId(getString(R.string.banner));
+        adView.setAdSize(getAdSize());
+        adContainerView.removeAllViews();
+        adContainerView.addView(adView);
+        adView.loadAd(new AdRequest.Builder().build());
+    }
+
+    private AdSize getAdSize() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int adWidth = (int) (dm.widthPixels / dm.density);
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this, adWidth);
+    }
+
     @Override
     protected void onPause() {
-        BannerAdManager.getInstance().hide();
+        if (adView != null) adView.pause();
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        BannerAdManager.getInstance().showIn(adContainerView);
+        if (adView != null) adView.resume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (adView != null) {
+            adView.destroy();
+            adView = null;
+        }
+        super.onDestroy();
     }
 
 }

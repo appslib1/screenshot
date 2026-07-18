@@ -48,6 +48,7 @@
     <string name="moreSettings">More settings</string>
     <string name="enableAudio">Enable audio on screenshot capture.</string>
     <string name="enableSound">Enable this option to play screenshot sound when a screenshot is taken</string>
+    <string name="noScreenshotsYet">No screenshots for the moment</string>
 
     <string name="appId">ca-app-pub-5592679724436623~7585202933</string>
     <!-- TODO: Replace with your real banner unit ID before release.

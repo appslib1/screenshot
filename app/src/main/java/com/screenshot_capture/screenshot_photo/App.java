@@ -12,12 +12,8 @@ public class App extends Application {
         installForegroundServiceTimeoutGuard();
         super.onCreate();
         MobileAds.initialize(this, initializationStatus -> { });
-        BannerAdManager.getInstance().preload(this); // bannière prête avant l'ouverture de MainActivity
         AppOpenAdManager.init(this);
         AppOpenAdManager.getInstance().preload();
-        // Pas de préchargement interstitiel ici : préchargé paresseusement quand l'utilisateur s'engage
-        // (voir showWithSafetyLoader). Précharger à chaque ouverture = des milliers de requêtes jamais
-        // affichées → taux d'affichage ridicule (ex. 1136 reqs / 52 imprs).
     }
 
     // Suppresses the system-thrown crash that fires when startForegroundService()

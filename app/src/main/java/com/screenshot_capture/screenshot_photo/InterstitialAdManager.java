@@ -2,18 +2,7 @@ package com.screenshot_capture.screenshot_photo;
 
 import android.app.Activity;
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
-import android.view.Gravity;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -28,6 +17,9 @@ public class InterstitialAdManager {
 
     private static final String TAG = "InterstitialAdManager";
 
+    // Le frein n'est plus le nombre de clics mais le temps (AdControl.GLOBAL_COOLDOWN).
+    // Seuil à 1 : l'ad préchargée est affichée dès le clic qualifiant → plus de requête
+    // brûlée sur un 1er clic qui n'aboutit jamais à une impression.
     private static final int CLICK_THRESHOLD = 1;
     private static final int MAX_PER_SESSION = 4;
 
@@ -112,7 +104,7 @@ public class InterstitialAdManager {
                 || interstitialAd == null
                 || isAdShowing
                 || (appOpen != null && appOpen.isShowingAd())
-                || System.currentTimeMillis() - AdControl.lastGlobalAdShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
+                || System.currentTimeMillis() - AdControl.lastAppOpenShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
             isPendingShow = false;
             if (onHideLoader != null) onHideLoader.run();
             if (onAdClosed != null) onAdClosed.run();
@@ -124,9 +116,9 @@ public class InterstitialAdManager {
             public void onAdShowedFullScreenContent() {
                 isAdShowing = true;
                 isPendingShow = false;
-                //long now = System.currentTimeMillis();
-                //AdControl.lastGlobalAdShowTime = now;
-                //setLastShowTime(activity, now); // بصمة آخر إعلان بيني للفاصل الزمني الأدنى
+                long now = System.currentTimeMillis();
+                AdControl.lastGlobalAdShowTime = now; // bloque l'App Open pendant CROSS_FORMAT_COOLDOWN
+                setLastShowTime(activity, now);       // base du cooldown interstitial → interstitial
                 if (onHideLoader != null) onHideLoader.run();
                 Log.d(TAG, "Ad Showed");
             }
@@ -184,19 +176,29 @@ public class InterstitialAdManager {
         // → dès l'intervalle écoulé, le prochain clic affiche directement (compteur déjà au seuil).
         int counter = getClickCounter(activity) + 1;
         setClickCounter(activity, counter);
-        // Cooldown actif → on NE consomme PAS le compteur : il reste au seuil et le PROCHAIN clic
-        // (une fois le cooldown écoulé) affichera l'ad. Avant, le compteur était remis à 0 à la ligne
-        // setClickCounter(0) puis showAdDirectly bloquait sur ce même cooldown → 1 ad sur 2 « mangée »
-        // (2e clic OK, 4e non, 6e OK...). En vérifiant ici, le clic qualifiant n'est plus gaspillé.
-        if (System.currentTimeMillis() - AdControl.lastGlobalAdShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
-            Log.d(TAG, "Skip interstitial: cooldown active (compteur conservé pour le prochain clic)");
+
+        long now = System.currentTimeMillis();
+
+        // Cooldown inter-formats : un App Open vient de s'afficher → on n'enchaîne pas un plein écran.
+        // On lit lastAppOpenShowTime (et non lastGlobalAdShowTime) sinon l'interstitial se bloquerait
+        // lui-même 5 min après chacun de ses propres affichages.
+        if (now - AdControl.lastAppOpenShowTime < AdControl.CROSS_FORMAT_COOLDOWN) {
+            Log.d(TAG, "Skip interstitial: cross-format cooldown (App Open récent)");
+            fallback.run();
+            return;
+        }
+
+        // Cooldown interstitial → interstitial. C'est le vrai frein anti-CTR maintenant que le seuil
+        // de clics est à 1 : sans lui, MainActivity n'ayant que 2 boutons de navigation, l'utilisateur
+        // se prendrait une pub à chaque tap. Le compteur n'est PAS consommé ici → le prochain clic
+        // une fois le cooldown écoulé affichera directement.
+        if (now - getLastShowTime(activity) < AdControl.GLOBAL_COOLDOWN) {
+            Log.d(TAG, "Skip interstitial: cooldown interstitial actif");
             fallback.run();
             return;
         }
 
         if (counter < CLICK_THRESHOLD) {
-            // Préchargement dès le 1er clic (compteur sous le seuil) : l'ad sera prête au clic qui
-            // atteint le seuil → affichage immédiat, et on évite le motif "1er clic requête / skip".
             if (interstitialAd == null && !isLoading) preload(activity, null);
             fallback.run();
             return;

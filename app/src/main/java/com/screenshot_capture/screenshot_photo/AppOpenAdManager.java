@@ -188,13 +188,25 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
         return true;
     }
 
+    // 🛡️ Pas d'App Open → l'utilisateur arrive directement sur MainActivity et va naviguer tout de
+    // suite. On précharge l'interstitial MAINTENANT pour qu'il soit prêt au 1er clic. Sans ça, le clic
+    // déclenche une requête, l'ad n'est pas prête, on skip → requête sans impression (c'est ce qui
+    // produisait 10 477 requêtes pour 947 impressions).
+    // À l'inverse, si l'App Open s'affiche, l'interstitial est de toute façon bloqué par
+    // CROSS_FORMAT_COOLDOWN → précharger serait une requête gaspillée.
+    // preload() est idempotent (garde sur ad en cache / chargement en cours / cap de session).
+    private void preloadInterstitialInstead() {
+        InterstitialAdManager.getInstance().preload(app, null);
+    }
+
     private void showAdIfAvailable() {
-        if (consumeSkipFlag()) return;
-        if (!canShowNow()) return;
+        if (consumeSkipFlag()) { preloadInterstitialInstead(); return; }
+        if (!canShowNow()) { preloadInterstitialInstead(); return; }
 
         // 🛡️ استراتيجية التوفير والأمان: إذا لم يكن الإعلان جاهزاً، لا نطلب إعلان بشكل عشوائي معقد
         if (!isAdAvailable()) {
             Log.d(TAG, "Ad not available at the moment");
+            preloadInterstitialInstead();
             return;
         }
 
@@ -216,6 +228,7 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
                     || !canShowNow()
                     || appOpenAd == null) {
                 removeLoader(loader);
+                preloadInterstitialInstead();
                 return;
             }
 
@@ -223,8 +236,10 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
                 @Override
                 public void onAdShowedFullScreenContent() {
                     isShowingAd = true;
-                    lastAdShownTime = System.currentTimeMillis();
-                    AdControl.lastGlobalAdShowTime = System.currentTimeMillis();
+                    long now = System.currentTimeMillis();
+                    lastAdShownTime = now;
+                    AdControl.lastGlobalAdShowTime = now;
+                    AdControl.lastAppOpenShowTime = now; // bloque l'interstitial pendant CROSS_FORMAT_COOLDOWN
                     handler.removeCallbacks(loaderSafety);
 
                     // إخفاء اللودر فوراً بعد تغطية الإعلان للشاشة لمنع حدوث الوميض (Flash)
@@ -278,7 +293,7 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
             }
 
             FrameLayout container = new FrameLayout(activity);
-            container.setBackgroundColor(0xEE000000); // تعتيم أعلى (93%) لمنع تشتيت أو خداع المستخدم بالخلفية
+            container.setBackgroundColor(0xCC000000); // تعتيم أعلى (93%) لمنع تشتيت أو خداع المستخدم بالخلفية
             container.setClickable(true);
             container.setFocusable(true);
             container.setFocusableInTouchMode(true);
@@ -356,6 +371,7 @@ public class AppOpenAdManager implements Application.ActivityLifecycleCallbacks,
                 prefs.edit().putBoolean(KEY_HAS_LAUNCHED_BEFORE, true).apply();
                 Log.d(TAG, "Skip: first launch after install");
                 loadAd(null); // تحميل استباقي آمن للجلسة القادمة فقط
+                preloadInterstitialInstead();
                 return;
             }
 
