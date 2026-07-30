@@ -3,7 +3,6 @@ package com.screenshot_capture.screenshot_photo;
 import android.app.Application;
 
 import com.google.android.gms.ads.MobileAds;
-import com.screenshot_capture.screenshot_photo.AppOpenAdManager;
 
 public class App extends Application {
 
@@ -12,8 +11,6 @@ public class App extends Application {
         installForegroundServiceTimeoutGuard();
         super.onCreate();
         MobileAds.initialize(this, initializationStatus -> { });
-        AppOpenAdManager.init(this);
-        AppOpenAdManager.getInstance().preload();
     }
 
     // Suppresses the system-thrown crash that fires when startForegroundService()

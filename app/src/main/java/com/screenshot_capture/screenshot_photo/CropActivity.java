@@ -77,9 +77,7 @@ public class CropActivity extends AppCompatActivity {
             out.close();
             Toast.makeText(this, R.string.imageCropped, Toast.LENGTH_SHORT).show();
             setResult(RESULT_OK);
-            // Interstitial après une action complétée (Save) + transition naturelle (finish).
-            // Le manager throttle/skip en interne et rappelle toujours le callback → on ferme dans tous les cas.
-            InterstitialAdManager.getInstance().showWithSafetyLoader(this, this::finish);
+            finish();
         } catch (Exception e) {
             Toast.makeText(this, R.string.cropError, Toast.LENGTH_SHORT).show();
         }

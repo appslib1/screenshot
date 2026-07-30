@@ -70,7 +70,6 @@ public class CaptureTriggerActivity extends Activity {
             return;
         }
         try {
-            AppOpenAdManager.disableNext();
             startActivityForResult(mpm.createScreenCaptureIntent(), REQUEST_PROJECTION);
         } catch (Exception e) {
             Log.e("CaptureTrigger", "launching consent failed", e);

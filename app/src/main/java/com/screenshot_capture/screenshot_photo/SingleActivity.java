@@ -67,9 +67,6 @@ public class SingleActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
 
-        // Préchargement de l'interstitiel pour qu'il soit prêt au clic sur « browse » (idempotent).
-        InterstitialAdManager.getInstance().preload(getApplicationContext(), null);
-
         // Chargement de la liste des médias pour le swipe
         loadMediaList();
 
@@ -104,12 +101,7 @@ public class SingleActivity extends AppCompatActivity {
 
         // Listeners des boutons
         homeBtn.setOnClickListener(v -> startActivity(new Intent(this, MainActivity.class)));
-        browseBtn.setOnClickListener(v -> {
-            // Interstitial sur ouverture de la liste (transition naturelle entre activités).
-            // Le manager throttle/skip en interne et rappelle toujours le callback → on navigue dans tous les cas.
-            Intent intent = new Intent(this, ListActivity.class);
-            InterstitialAdManager.getInstance().showWithSafetyLoader(this, () -> startActivity(intent));
-        });
+        browseBtn.setOnClickListener(v -> startActivity(new Intent(this, ListActivity.class)));
         shareBtn.setOnClickListener(v -> shareImage());
         cropBtn.setOnClickListener(v -> cropImage());
         deleteBtn.setOnClickListener(v -> deleteImageDialog());
@@ -163,7 +155,6 @@ public class SingleActivity extends AppCompatActivity {
             intent.setType("image/*");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            AppOpenAdManager.disableNext();
             startActivity(Intent.createChooser(intent, getString(R.string.shareImg)));
         } catch (Exception e) {
             Toast.makeText(this, "Error sharing image", Toast.LENGTH_SHORT).show();

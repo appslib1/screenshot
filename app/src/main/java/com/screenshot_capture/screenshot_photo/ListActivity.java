@@ -71,7 +71,6 @@ public class ListActivity extends AppCompatActivity {
         // Permission requise pour lire les captures de l'appareil (dossier public « Screenshots »).
         // On charge d'abord les captures de l'appli, puis on recharge en fusionnant après octroi.
         if (!ScreenshotLoader.hasReadPermission(this)) {
-            AppOpenAdManager.disableNext(); // le dialogue de permission met l'appli en arrière-plan
             ActivityCompat.requestPermissions(this,
                     new String[]{ScreenshotLoader.requiredPermission()}, REQUEST_CODE_READ_MEDIA);
         }

@@ -23,6 +23,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Real AdMob unit ID — only ever used in release builds.
+            resValue("string", "banner", "ca-app-pub-5592679724436623/1827513175")
+        }
+        debug {
+            // Google's official test unit ID — required during development so the
+            // real account never records invalid traffic.
+            resValue("string", "banner", "ca-app-pub-3940256099942544/6300978111")
         }
     }
     compileOptions {
@@ -42,8 +50,6 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.viewpager2)
     implementation("com.google.android.gms:play-services-ads:23.6.0")
-    // ProcessLifecycleOwner for the App Open ad manager (2.7.0 keeps minSdk 21).
-    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("com.github.bumptech.glide:glide:5.0.5")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
