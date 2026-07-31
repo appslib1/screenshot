@@ -11,7 +11,7 @@
         android:background="@drawable/floating_button_bg"
         android:contentDescription="@string/clickToTakeScreenshot"
         android:padding="12dp"
-        android:src="@drawable/baseline_camera_24"
+        android:src="@drawable/baseline_crop_free_24"
         android:tint="@color/white" />
 
 </FrameLayout>
