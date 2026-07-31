@@ -65,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(R.string.toolbarTitle);
+        }
         createNotificationChannel();
 
         this.overlayLauncher = registerForActivityResult(
