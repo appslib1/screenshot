@@ -29,6 +29,8 @@ public class SettingsActivity extends AppCompatActivity {
     private SwitchMaterial notificationSwitch;
     private SwitchMaterial btnSwitch;
     private SwitchMaterial soundSwitch;
+    // Empêche l'aller-retour de listeners quand on force l'état de l'autre source de capture.
+    private boolean syncingSources = false;
     private SharedPreferences prefs;
     private FrameLayout adContainerView;
     private AdView adView;
@@ -72,31 +74,38 @@ public class SettingsActivity extends AppCompatActivity {
         btnSwitch = findViewById(R.id.btnSwitch);
         soundSwitch = findViewById(R.id.soundSwitch);
 
-        // Chargement des valeurs sauvegardées
-        notificationSwitch.setChecked(prefs.getBoolean(KEY_NOTIFICATION, true));
-        btnSwitch.setChecked(prefs.getBoolean(KEY_BTN, false));
+        // Chargement des valeurs sauvegardées. Les deux sources de capture s'excluent :
+        // si l'état stocké est incohérent (les deux à on ou les deux à off), on retombe
+        // sur la notification, sinon « Turn on » n'aurait plus rien à lancer.
+        boolean notification = prefs.getBoolean(KEY_NOTIFICATION, true);
+        boolean btn = prefs.getBoolean(KEY_BTN, false);
+        boolean fixed = (notification == btn);
+        if (fixed) {
+            notification = true;
+            btn = false;
+        }
+        notificationSwitch.setChecked(notification);
+        btnSwitch.setChecked(btn);
         soundSwitch.setChecked(prefs.getBoolean(KEY_SOUND, true));
+        if (fixed) savePrefs();
 
-        // Listener Notification
-        notificationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                // Si on active la notification, on désactive le bouton flottant
-                btnSwitch.setChecked(false);
-            }
-            savePrefs();
-        });
-
-        // Listener Bouton Flottant
-        btnSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                // Si on active le bouton flottant, on désactive la notification
-                notificationSwitch.setChecked(false);
-            }
-            savePrefs();
-        });
+        // Décocher une source coche l'autre, et inversement : il y en a toujours exactement une d'active.
+        notificationSwitch.setOnCheckedChangeListener(
+                (buttonView, isChecked) -> onCaptureSourceChanged(btnSwitch, isChecked));
+        btnSwitch.setOnCheckedChangeListener(
+                (buttonView, isChecked) -> onCaptureSourceChanged(notificationSwitch, isChecked));
 
         // Listener Son
         soundSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> savePrefs());
+    }
+
+    /** Applique l'état inverse à l'autre source de capture, sans relancer son propre listener. */
+    private void onCaptureSourceChanged(SwitchMaterial other, boolean isChecked) {
+        if (syncingSources) return;
+        syncingSources = true;
+        other.setChecked(!isChecked);
+        syncingSources = false;
+        savePrefs();
     }
 
     private void savePrefs() {
