@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         });
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.toolbarTitle);
+            getSupportActionBar().setTitle(R.string.shortAppName);
         }
         createNotificationChannel();
 
@@ -146,8 +146,8 @@ public class MainActivity extends AppCompatActivity {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.baseline_camera_24)
-                .setContentTitle(getString(R.string.app_name))
+                .setSmallIcon(R.drawable.baseline_crop_free_24)
+                .setContentTitle(getString(R.string.shortAppName))
                 .setContentText(getString(R.string.clickToTakeScreenshot))
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOnlyAlertOnce(true)

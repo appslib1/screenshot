@@ -286,8 +286,8 @@ public class ScreenshotService extends Service {
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.baseline_camera_24)
-                .setContentTitle(getString(R.string.app_name))
+                .setSmallIcon(R.drawable.baseline_crop_free_24)
+                .setContentTitle(getString(R.string.shortAppName))
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOnlyAlertOnce(true)
