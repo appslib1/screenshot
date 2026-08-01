@@ -1,80 +1,163 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:aapt="http://schemas.android.com/aapt"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_bg"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:paddingStart="20dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="24dp">
+
+    <ImageButton
+        android:id="@+id/closeRatingButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="end"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/close"
+        android:src="@drawable/baseline_close_24"
+        app:tint="@color/faceFeature" />
+
+    <ImageView
+        android:id="@+id/ratingFace"
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_face_star" />
+
     <TextView
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/primaryTextColor"
-        android:layout_gravity="center"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/rateOurApp"/>
-    <TextView
-        android:textSize="14sp"
-        android:textColor="#757575"
-        android:layout_gravity="center"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/hearUrFeedback"
-        android:textAlignment="center"/>
-    <LinearLayout
-        android:gravity="center"
-        android:layout_gravity="center"
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-        <ImageButton
-            android:id="@+id/star1"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/baseline_star_24"
-            android:contentDescription="@string/star1"/>
-        <ImageButton
-            android:id="@+id/star2"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/baseline_star_24"
-            android:contentDescription="@string/star2"/>
-        <ImageButton
-            android:id="@+id/star3"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/baseline_star_24"
-            android:contentDescription="@string/star3"/>
-        <ImageButton
-            android:id="@+id/star4"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/baseline_star_24"
-            android:contentDescription="@string/star4"/>
-        <ImageButton
-            android:id="@+id/star5"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/baseline_star_24"
-            android:contentDescription="@string/star5"/>
-    </LinearLayout>
-    <com.google.android.material.button.MaterialButton
-        android:theme="@style/Theme.MaterialComponents"
-        android:textSize="12sp"
-        android:textColor="@color/white"
-        android:id="@+id/submitRatingButton"
+        android:id="@+id/ratingTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/submit"
+        android:layout_marginTop="24dp"
+        android:lineSpacingMultiplier="1.2"
+        android:text="@string/rateTitleIdle"
+        android:textAlignment="center"
+        android:textColor="@color/primaryTextColor"
+        android:textSize="21sp" />
+
+    <TextView
+        android:id="@+id/ratingSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:lineSpacingMultiplier="1.2"
+        android:text="@string/rateSubtitleLow"
+        android:textAlignment="center"
+        android:textColor="@color/ratingSecondaryText"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+    <!-- Accroche rouge + flèche pointant vers la 5e étoile. -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="180dp"
+            android:layout_height="wrap_content"
+            android:text="@string/rateHint"
+            android:textAlignment="center"
+            android:textColor="@color/ratingRed"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_rating_arrow" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/star1"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/star1"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_star_outline_24" />
+
+        <ImageButton
+            android:id="@+id/star2"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/star2"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_star_outline_24" />
+
+        <ImageButton
+            android:id="@+id/star3"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/star3"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_star_outline_24" />
+
+        <ImageButton
+            android:id="@+id/star4"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/star4"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_star_outline_24" />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <ImageButton
+                android:id="@+id/star5"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/star5"
+                android:padding="4dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/baseline_star_outline_24" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="top|end"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_star_sparkle" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/submitRatingButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="24dp"
+        android:text="@string/rateAction"
         android:textAllCaps="false"
-        app:backgroundTint="@color/primaryColor"
-        app:cornerRadius="8dp"
-        app:strokeColor="@color/primaryTextColor"/>
+        android:textColor="@color/white"
+        android:textSize="19sp"
+        app:backgroundTint="@color/rating_button_tint"
+        app:cornerRadius="10dp"
+        app:elevation="0dp" />
 </LinearLayout>

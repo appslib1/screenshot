@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flèche courbe pointant vers la 5e étoile. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="28dp"
+    android:viewportWidth="44"
+    android:viewportHeight="28">
+    <path
+        android:pathData="M2,5 Q26,2 32.5,17"
+        android:strokeColor="@color/ratingRed"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="@color/ratingRed"
+        android:pathData="M35.5,24 L27.6,19.4 L37.2,15.2 Z" />
+</vector>

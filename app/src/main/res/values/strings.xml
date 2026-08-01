@@ -10,7 +10,15 @@
     <string name="overlayRequired">Overlay permission is required!</string>
     <string name="clickToTakeScreenshot">Tap to take screenshot</string>
     <string name="notificationPermissionDenied">Notification permission denied</string>
-    <string name="rateOurApp">Rate Our App</string>
+    <!-- Modale de notation : titre/sous-titre changent selon le nombre d'étoiles. -->
+    <string name="rateTitleIdle">Rate us to help us improve our apps!</string>
+    <string name="rateTitleLow">Oh no!</string>
+    <string name="rateSubtitleLow">Tell us what\'s wrong so we can fix it!</string>
+    <string name="rateTitleHigh">We love you too!</string>
+    <string name="rateSubtitleHigh">Thanks for sharing your feedback</string>
+    <string name="rateHint">The best rating we could receive</string>
+    <string name="rateAction">Rate</string>
+    <string name="close">Close</string>
     <string name="feedbackForApp">Comment for the application: Screenshot</string>
     <string name="noEmail">No email app is found on your device</string>
     <string name="shareApp">Share</string>
@@ -21,8 +29,6 @@
     <string name="star3">Star 3</string>
     <string name="star4">Star 4</string>
     <string name="star5">Star 5</string>
-    <string name="submit">Submit</string>
-    <string name="hearUrFeedback">Help us make the app even better—share your feedback!</string>
     <string name="rate_us">Rate us</string>
     <string name="screenshotSaved">Screenshot saved</string>
     <string name="captureFailed">Capture failed</string>

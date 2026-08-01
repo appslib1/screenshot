@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Visage déçu (note 1-2). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="@color/faceRed"
+        android:pathData="M24,1A23,23 0 1,0 24,47A23,23 0 1,0 24,1Z" />
+    <!-- Yeux fermés, tombants -->
+    <path
+        android:pathData="M11,21 Q16,15 21,21"
+        android:strokeColor="@color/faceFeature"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M27,21 Q32,15 37,21"
+        android:strokeColor="@color/faceFeature"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <!-- Bouche neutre -->
+    <path
+        android:pathData="M17,32 H31"
+        android:strokeColor="@color/faceFeature"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+</vector>

@@ -10,8 +10,8 @@ android {
         applicationId = "com.screenshot_capture.screenshot_photo"
         minSdk = 21
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.18"
+        versionCode = 24
+        versionName = "1.19"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

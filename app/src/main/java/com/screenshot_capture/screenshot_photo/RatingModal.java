@@ -1,29 +1,50 @@
 package com.screenshot_capture.screenshot_photo;
 
-import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.net.Uri;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+
 public class RatingModal {
     private final Context context;
-    private int selectedStars = 5;
+    // 0 = aucune note choisie : le bouton reste inactif tant que l'utilisateur n'a pas cliqué.
+    private int selectedStars = 0;
     private final int[] starIds = {
             R.id.star1, R.id.star2, R.id.star3, R.id.star4, R.id.star5
     };
+
+    private ImageView face;
+    private TextView title;
+    private TextView subtitle;
+    private Button submitButton;
 
     public RatingModal(Context context) {
         this.context = context;
     }
 
     public void openRatingDialog() {
-        final Dialog dialog = new Dialog(this.context);
+        final BottomSheetDialog dialog = new BottomSheetDialog(this.context);
         dialog.setContentView(R.layout.rating_modal);
+        // Le conteneur du bottom sheet est laissé transparent : ce sont les coins arrondis
+        // du layout qui donnent la forme de la modale.
+        dialog.setOnShowListener(d -> {
+            View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            if (sheet != null) sheet.setBackgroundColor(Color.TRANSPARENT);
+        });
+
+        face = dialog.findViewById(R.id.ratingFace);
+        title = dialog.findViewById(R.id.ratingTitle);
+        subtitle = dialog.findViewById(R.id.ratingSubtitle);
 
         final ImageButton[] starButtons = new ImageButton[5];
 
@@ -37,8 +58,11 @@ public class RatingModal {
             });
         }
 
+        ImageButton closeButton = dialog.findViewById(R.id.closeRatingButton);
+        if (closeButton != null) closeButton.setOnClickListener(v -> dialog.dismiss());
+
         // Bouton de validation
-        Button submitButton = dialog.findViewById(R.id.submitRatingButton);
+        submitButton = dialog.findViewById(R.id.submitRatingButton);
         submitButton.setOnClickListener(v -> {
             // Logique de redirection : 4-5 étoiles -> Play Store, < 4 -> Feedback Email
             if (this.selectedStars >= 4) {
@@ -55,7 +79,7 @@ public class RatingModal {
             dialog.dismiss();
         });
 
-        // Initialisation par défaut (5 étoiles)
+        // État initial : aucune étoile sélectionnée
         updateStarUI(starButtons, this.selectedStars);
 
         dialog.show();
@@ -63,10 +87,41 @@ public class RatingModal {
 
     private void updateStarUI(ImageButton[] buttons, int count) {
         this.selectedStars = count;
+
+        // Rouge tant que la note est mauvaise, ambre dès 4 étoiles.
+        int filledColor = ContextCompat.getColor(this.context,
+                count >= 4 ? R.color.ratingAmber : R.color.ratingRed);
+        int emptyColor = ContextCompat.getColor(this.context, R.color.ratingStarEmpty);
+
         for (int i = 0; i < buttons.length; i++) {
-            int drawableId = (i < count) ? R.drawable.baseline_star_24 : R.drawable.baseline_star_outline_24;
+            boolean filled = i < count;
+            int drawableId = filled ? R.drawable.baseline_star_24 : R.drawable.baseline_star_outline_24;
             buttons[i].setImageDrawable(ContextCompat.getDrawable(this.context, drawableId));
+            buttons[i].setImageTintList(ColorStateList.valueOf(filled ? filledColor : emptyColor));
         }
+
+        updateMoodUI(count);
+    }
+
+    /** Visage, titre, sous-titre et état du bouton suivent la note sélectionnée. */
+    private void updateMoodUI(int count) {
+        if (count == 0) {
+            face.setImageResource(R.drawable.ic_face_star);
+            title.setText(R.string.rateTitleIdle);
+            subtitle.setVisibility(View.GONE);
+        } else if (count >= 4) {
+            // Yeux en cœur réservés à la note maximale.
+            face.setImageResource(count == 5 ? R.drawable.ic_face_love : R.drawable.ic_face_happy);
+            title.setText(R.string.rateTitleHigh);
+            subtitle.setText(R.string.rateSubtitleHigh);
+            subtitle.setVisibility(View.VISIBLE);
+        } else {
+            face.setImageResource(count == 3 ? R.drawable.ic_face_neutral : R.drawable.ic_face_sad);
+            title.setText(R.string.rateTitleLow);
+            subtitle.setText(R.string.rateSubtitleLow);
+            subtitle.setVisibility(View.VISIBLE);
+        }
+        submitButton.setEnabled(count > 0);
     }
 
     private void openEmailIntent() {

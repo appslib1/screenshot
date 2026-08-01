@@ -14,5 +14,17 @@
     <color name="primaryTextColor">#222</color>
     <color name="darkGray">#a3a3a3</color>
 
+    <!-- Modale de notation -->
+    <color name="ratingRed">#F5222D</color>
+    <color name="ratingAmber">#FBBC04</color>
+    <color name="ratingStarEmpty">#DDDDDD</color>
+    <!-- Bouton de la modale désactivé : primaryColor éclairci. -->
+    <color name="ratingButtonDisabled">#A9C6F5</color>
+    <color name="ratingSecondaryText">#5F6368</color>
+    <color name="faceRed">#F0555B</color>
+    <color name="faceYellow">#FCC934</color>
+    <color name="faceFeature">#3C4043</color>
+    <color name="faceHeart">#EA3B4E</color>
+
 
 </resources>
