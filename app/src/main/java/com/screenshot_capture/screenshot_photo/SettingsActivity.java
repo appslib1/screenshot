@@ -86,7 +86,7 @@ public class SettingsActivity extends AppCompatActivity {
         }
         notificationSwitch.setChecked(notification);
         btnSwitch.setChecked(btn);
-        soundSwitch.setChecked(prefs.getBoolean(KEY_SOUND, true));
+        soundSwitch.setChecked(prefs.getBoolean(KEY_SOUND, false));
         if (fixed) savePrefs();
 
         // Décocher une source coche l'autre, et inversement : il y en a toujours exactement une d'active.

@@ -15,6 +15,7 @@ import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.AudioManager;
 import android.media.MediaActionSound;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
@@ -264,9 +265,18 @@ public class ScreenshotService extends Service {
 
     private void playShutterIfEnabled() {
         SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (p.getBoolean(KEY_SOUND, true) && shutterSound != null) {
-            try { shutterSound.play(MediaActionSound.SHUTTER_CLICK); } catch (Exception ignored) {}
+        if (!p.getBoolean(KEY_SOUND, false) || shutterSound == null) return;
+
+        // MediaActionSound passe par STREAM_SYSTEM_ENFORCED : sur certains appareils il sonne
+        // même en silencieux ou en vibreur. On aligne donc explicitement le déclenchement sur
+        // le profil sonore et le volume système de l'appareil.
+        AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (am != null && (am.getRingerMode() != AudioManager.RINGER_MODE_NORMAL
+                || am.getStreamVolume(AudioManager.STREAM_SYSTEM) == 0)) {
+            return;
         }
+
+        try { shutterSound.play(MediaActionSound.SHUTTER_CLICK); } catch (Exception ignored) {}
     }
 
     private void ensureChannel() {

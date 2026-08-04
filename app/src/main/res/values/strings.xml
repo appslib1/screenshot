@@ -55,7 +55,7 @@
     <string name="enableButton">Enable this option to begin capturing screenshots from the overlay button, when the button is clicked, a screenshot will be taken.</string>
     <string name="moreSettings">More settings</string>
     <string name="enableAudio">Enable audio on screenshot capture.</string>
-    <string name="enableSound">Enable this option to play screenshot sound when a screenshot is taken</string>
+    <string name="enableSound">Enable this option to play screenshot sound when a screenshot is taken. The sound follows your device settings and stays silent in silent or vibrate mode.</string>
     <string name="noScreenshotsYet">No screenshots for the moment</string>
 
     <string name="appId">ca-app-pub-5592679724436623~7585202933</string>
