@@ -18,13 +18,15 @@ import java.util.List;
 
 /**
  * Charge la liste des captures d'écran à afficher : celles prises par l'appli
- * (dossier privé du cache) FUSIONNÉES avec celles présentes sur l'appareil
- * (dossier public « Screenshots », via MediaStore), triées par date décroissante.
+ * (via MediaStore dans Pictures/Screenshots, plus fichiers legacy du cache privé)
+ * FUSIONNÉES avec celles présentes sur l'appareil (dossier public « Screenshots »
+ * pris par d'autres applis/système), triées par date décroissante.
  *
  * <p>Un item est représenté par une {@code String} :
  * <ul>
- *   <li>un chemin de fichier absolu → capture de l'appli, <b>modifiable</b> (crop/suppression) ;</li>
- *   <li>une URI {@code content://…} → capture externe (autre appli/système), <b>lecture + partage seulement</b>.</li>
+ *   <li>un chemin de fichier absolu → capture legacy de l'appli (ancien cache), <b>modifiable</b> ;</li>
+ *   <li>une URI {@code content://…} → capture MediaStore. Modifiable uniquement si
+ *       l'appli en est propriétaire ({@code OWNER_PACKAGE_NAME}).</li>
  * </ul>
  * {@link com.bumptech.glide.Glide#load(String)} sait afficher les deux formes.
  */
@@ -32,9 +34,26 @@ public final class ScreenshotLoader {
 
     private ScreenshotLoader() {}
 
-    /** Un item est modifiable (crop/suppression) uniquement si l'appli en est propriétaire (fichier du cache). */
-    public static boolean isEditable(String item) {
-        return item != null && !item.startsWith("content://");
+    /**
+     * Un item est modifiable (crop/suppression) si :
+     * <ul>
+     *   <li>c'est un chemin de fichier (capture legacy du cache privé), ou</li>
+     *   <li>c'est une URI MediaStore dont notre appli est propriétaire.</li>
+     * </ul>
+     */
+    public static boolean isEditable(Context ctx, String item) {
+        if (item == null) return false;
+        if (!item.startsWith("content://")) return true;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false;
+        try (Cursor c = ctx.getContentResolver().query(
+                Uri.parse(item),
+                new String[]{MediaStore.Images.Media.OWNER_PACKAGE_NAME},
+                null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                return ctx.getPackageName().equals(c.getString(0));
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     /** Permission de lecture média requise selon la version d'Android. */

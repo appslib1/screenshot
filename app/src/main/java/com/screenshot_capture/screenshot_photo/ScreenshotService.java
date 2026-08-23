@@ -5,6 +5,8 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -17,13 +19,17 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.AudioManager;
 import android.media.MediaActionSound;
+import android.media.MediaScannerConnection;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -34,6 +40,7 @@ import androidx.core.app.NotificationCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -238,24 +245,79 @@ public class ScreenshotService extends Service {
         Bitmap finalBitmap = (rowPadding == 0) ? raw : Bitmap.createBitmap(raw, 0, 0, width, height);
         if (finalBitmap != raw) raw.recycle();
 
-        File dir = new File(getCacheDir(), "Screenshots");
-        if (!dir.exists()) dir.mkdirs();
-        String name = "screenshot_"
+        String name = "Screenshot_"
                 + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date())
                 + ".png";
-        File out = new File(dir, name);
-        boolean ok = false;
-        try (FileOutputStream fos = new FileOutputStream(out)) {
-            ok = finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-        } catch (Exception e) {
-            Log.e(TAG, "writing PNG failed", e);
-        } finally {
-            finalBitmap.recycle();
-        }
-        Log.d(TAG, "save ok=" + ok + " path=" + out.getAbsolutePath());
 
-        notifyMain(ok ? R.string.screenshotSaved : R.string.captureFailed);
-        return ok ? out.getAbsolutePath() : null;
+        String identifier = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                ? saveViaMediaStore(finalBitmap, name)
+                : saveToPublicPictures(finalBitmap, name);
+
+        finalBitmap.recycle();
+        notifyMain(identifier != null ? R.string.screenshotSaved : R.string.captureFailed);
+        return identifier;
+    }
+
+    /** Q+ : insertion MediaStore dans Pictures/Screenshots avec le pattern IS_PENDING. */
+    private String saveViaMediaStore(Bitmap bitmap, String displayName) {
+        ContentResolver resolver = getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, displayName);
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+        values.put(MediaStore.Images.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_PICTURES + "/Screenshots");
+        values.put(MediaStore.Images.Media.IS_PENDING, 1);
+
+        Uri uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+        if (uri == null) {
+            Log.e(TAG, "MediaStore insert returned null");
+            return null;
+        }
+
+        try (OutputStream out = resolver.openOutputStream(uri)) {
+            if (out == null || !bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) {
+                throw new java.io.IOException("compress failed");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "writing PNG via MediaStore failed", e);
+            try { resolver.delete(uri, null, null); } catch (Exception ignored) {}
+            return null;
+        }
+
+        values.clear();
+        values.put(MediaStore.Images.Media.IS_PENDING, 0);
+        try { resolver.update(uri, values, null, null); } catch (Exception ignored) {}
+
+        Log.d(TAG, "save ok uri=" + uri);
+        return uri.toString();
+    }
+
+    /** Pré-Q : écriture directe dans Pictures/Screenshots puis scan MediaStore. */
+    private String saveToPublicPictures(Bitmap bitmap, String displayName) {
+        File dir = new File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                "Screenshots");
+        if (!dir.exists() && !dir.mkdirs()) {
+            Log.e(TAG, "cannot create " + dir);
+            return null;
+        }
+        File out = new File(dir, displayName);
+        try (FileOutputStream fos = new FileOutputStream(out)) {
+            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)) {
+                throw new java.io.IOException("compress failed");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "writing PNG to public Pictures failed", e);
+            return null;
+        }
+
+        MediaScannerConnection.scanFile(this,
+                new String[]{out.getAbsolutePath()},
+                new String[]{"image/png"},
+                null);
+
+        Log.d(TAG, "save ok path=" + out.getAbsolutePath());
+        return out.getAbsolutePath();
     }
 
     private void notifyMain(int stringRes) {

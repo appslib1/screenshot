@@ -2,6 +2,7 @@ package com.screenshot_capture.screenshot_photo;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -14,11 +15,16 @@ import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class CropActivity extends AppCompatActivity {
 
     private CropOverlayView cropView;
+    /** Chemin de fichier legacy (cache privé) ; {@code null} si l'item est une URI MediaStore. */
     private File currentImageFile;
+    /** URI MediaStore de l'item à réécrire ; {@code null} si l'item est un fichier legacy. */
+    private Uri currentImageUri;
     private Bitmap sourceBitmap;
 
     @Override
@@ -47,8 +53,19 @@ public class CropActivity extends AppCompatActivity {
             finish();
             return;
         }
-        currentImageFile = new File(imgPath);
-        sourceBitmap = BitmapFactory.decodeFile(imgPath);
+
+        if (imgPath.startsWith("content://")) {
+            currentImageUri = Uri.parse(imgPath);
+            try (InputStream in = getContentResolver().openInputStream(currentImageUri)) {
+                sourceBitmap = BitmapFactory.decodeStream(in);
+            } catch (Exception e) {
+                sourceBitmap = null;
+            }
+        } else {
+            currentImageFile = new File(imgPath);
+            sourceBitmap = BitmapFactory.decodeFile(imgPath);
+        }
+
         if (sourceBitmap == null) {
             Toast.makeText(this, R.string.cropError, Toast.LENGTH_SHORT).show();
             finish();
@@ -61,26 +78,43 @@ public class CropActivity extends AppCompatActivity {
     }
 
     private void saveCroppedImage() {
-        if (currentImageFile == null) return;
+        if (currentImageFile == null && currentImageUri == null) return;
         Bitmap cropped = cropView.getCroppedBitmap();
         if (cropped == null) {
             Toast.makeText(this, R.string.cropInvalidArea, Toast.LENGTH_SHORT).show();
             return;
         }
         try {
-            Bitmap.CompressFormat format = currentImageFile.getName().toLowerCase().endsWith(".png")
+            Bitmap.CompressFormat format = isPngTarget()
                     ? Bitmap.CompressFormat.PNG
                     : Bitmap.CompressFormat.JPEG;
-            FileOutputStream out = new FileOutputStream(currentImageFile);
-            cropped.compress(format, 100, out);
-            out.flush();
-            out.close();
+            try (OutputStream out = openTargetOutputStream()) {
+                if (out == null) throw new java.io.IOException("null OutputStream");
+                cropped.compress(format, 100, out);
+                out.flush();
+            }
             Toast.makeText(this, R.string.imageCropped, Toast.LENGTH_SHORT).show();
             setResult(RESULT_OK);
             finish();
         } catch (Exception e) {
             Toast.makeText(this, R.string.cropError, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private boolean isPngTarget() {
+        // Nos captures sont toujours en PNG ; pour un fichier legacy on garde l'extension.
+        if (currentImageFile != null) {
+            return currentImageFile.getName().toLowerCase().endsWith(".png");
+        }
+        return true;
+    }
+
+    private OutputStream openTargetOutputStream() throws Exception {
+        if (currentImageUri != null) {
+            // "w" tronque le contenu existant avant réécriture.
+            return getContentResolver().openOutputStream(currentImageUri, "w");
+        }
+        return new FileOutputStream(currentImageFile);
     }
 
     @Override

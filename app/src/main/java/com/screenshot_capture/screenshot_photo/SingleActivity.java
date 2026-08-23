@@ -111,7 +111,7 @@ public class SingleActivity extends AppCompatActivity {
         updateActionButtons();
     }
 
-    /** Item courant : chemin de fichier (capture appli) ou URI content:// (capture appareil). */
+    /** Item courant : chemin de fichier (capture legacy) ou URI content:// (MediaStore). */
     private String getCurrentItem() {
         if (currentIndex >= 0 && currentIndex < mediaList.size()) {
             return mediaList.get(currentIndex);
@@ -119,21 +119,16 @@ public class SingleActivity extends AppCompatActivity {
         return null;
     }
 
-    /** Fichier courant, uniquement si l'item est une capture modifiable de l'appli ; sinon null. */
-    private File getCurrentFile() {
-        String item = getCurrentItem();
-        return ScreenshotLoader.isEditable(item) ? new File(item) : null;
-    }
-
-    /** Crop et suppression ne sont possibles que sur les captures de l'appli (fichiers). */
+    /** Crop et suppression sont possibles sur les captures dont l'appli est propriétaire. */
     private void updateActionButtons() {
-        boolean editable = ScreenshotLoader.isEditable(getCurrentItem());
+        boolean editable = ScreenshotLoader.isEditable(this, getCurrentItem());
         cropBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
         deleteBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
     }
 
     private void loadMediaList() {
-        // Fusion des captures de l'appli (cache) + du dossier « Screenshots » de l'appareil.
+        // Fusion des captures MediaStore de l'appli + captures legacy du cache privé
+        // + captures externes du dossier « Screenshots » de l'appareil.
         mediaList.clear();
         mediaList.addAll(ScreenshotLoader.loadAll(this));
     }
@@ -143,14 +138,13 @@ public class SingleActivity extends AppCompatActivity {
         if (item == null) return;
         try {
             Uri uri;
-            if (ScreenshotLoader.isEditable(item)) {
-                // Capture de l'appli : fichier privé → partagé via FileProvider.
+            if (item.startsWith("content://")) {
+                uri = Uri.parse(item);
+            } else {
+                // Capture legacy : fichier privé → partage via FileProvider.
                 File file = new File(item);
                 if (!file.exists()) return;
                 uri = FileProvider.getUriForFile(this, getPackageName() + ".fileProvider", file);
-            } else {
-                // Capture de l'appareil : déjà une URI content:// partageable telle quelle.
-                uri = Uri.parse(item);
             }
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType("image/*");
@@ -164,11 +158,10 @@ public class SingleActivity extends AppCompatActivity {
     }
 
     private void cropImage() {
-        // Crop réservé aux captures de l'appli (réécriture du fichier).
-        File file = getCurrentFile();
-        if (file == null || !file.exists()) return;
+        String item = getCurrentItem();
+        if (item == null || !ScreenshotLoader.isEditable(this, item)) return;
         Intent intent = new Intent(this, CropActivity.class);
-        intent.putExtra("img_uri", file.getAbsolutePath());
+        intent.putExtra("img_uri", item);
         startActivityForResult(intent, REQUEST_CROP);
     }
 
@@ -176,24 +169,34 @@ public class SingleActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_CROP && resultCode == RESULT_OK) {
-            // The file was overwritten with the cropped image — reload the current page.
+            // The image was overwritten with the cropped version — reload the current page.
             pagerAdapter.notifyItemChanged(currentIndex);
         }
     }
 
     private void deleteImageDialog() {
-        // Suppression réservée aux captures de l'appli (fichiers dont l'appli est propriétaire).
-        File file = getCurrentFile();
-        if (file == null || !file.exists()) return;
+        String item = getCurrentItem();
+        if (item == null || !ScreenshotLoader.isEditable(this, item)) return;
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.deleteImage)
                 .setMessage(R.string.areYouSure)
                 .setPositiveButton(R.string.delete, (dialog, which) -> {
-                    if (file.delete()) {
+                    boolean deleted;
+                    if (item.startsWith("content://")) {
+                        try {
+                            deleted = getContentResolver().delete(Uri.parse(item), null, null) > 0;
+                        } catch (Exception e) {
+                            Log.e("DeleteError", "content delete failed", e);
+                            deleted = false;
+                        }
+                    } else {
+                        deleted = new File(item).delete();
+                    }
+                    if (deleted) {
                         Intent intent = new Intent();
                         intent.putExtra("imageDeleted", true);
-                        intent.putExtra("deletedImagePath", file.getAbsolutePath());
+                        intent.putExtra("deletedImagePath", item);
                         setResult(RESULT_OK, intent);
                         finish();
                     }
