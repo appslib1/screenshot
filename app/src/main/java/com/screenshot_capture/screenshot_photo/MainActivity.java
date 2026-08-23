@@ -140,6 +140,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void postCaptureNotification() {
+        // Une session vivante : le service tient déjà sa propre notification (avec bouton Stop).
+        // Ne pas la remplacer par une notification bootstrap sans action Stop.
+        if (ScreenshotService.isSessionAlive()) return;
+
         Intent trigger = new Intent(this, CaptureTriggerActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentPi = PendingIntent.getActivity(this, 1, trigger,

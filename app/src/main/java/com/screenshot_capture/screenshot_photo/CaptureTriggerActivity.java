@@ -35,12 +35,10 @@ public class CaptureTriggerActivity extends Activity {
             if (MODE_OVERLAY.equals(mode)) {
                 FloatingButton.show(getApplicationContext());
             }
-            if (path != null) {
-                Intent open = new Intent(CaptureTriggerActivity.this, SingleActivity.class);
-                open.putExtra("img_uri", path);
-                open.putExtra("fromList", "no");
-                startActivity(open);
-            }
+            // On n'ouvre PAS SingleActivity ici : ça ramenait l'appli au premier plan et
+            // évinçait l'écran cible du user (Settings, Chrome, etc.). Un screenshot doit
+            // rester non-intrusif. Le toast « Screenshot saved » émis depuis save() suffit
+            // comme feedback ; l'utilisateur peut consulter via « Your screenshots ».
             finish();
         }
     };
@@ -64,6 +62,16 @@ public class CaptureTriggerActivity extends Activity {
             registerReceiver(receiver, filter);
         }
 
+        new Handler(Looper.getMainLooper()).postDelayed(safetyFinish, SAFETY_TIMEOUT_MS);
+
+        // Fast path : session déjà consentie → on déclenche sans repasser par le consent.
+        if (ScreenshotService.isSessionAlive()) {
+            Log.d("CaptureTrigger", "session alive - fast trigger");
+            serviceStarted = true;
+            ContextCompat.startForegroundService(this, ScreenshotService.triggerIntent(this, mode));
+            return;
+        }
+
         MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         if (mpm == null) {
             finish();
@@ -74,10 +82,7 @@ public class CaptureTriggerActivity extends Activity {
         } catch (Exception e) {
             Log.e("CaptureTrigger", "launching consent failed", e);
             finish();
-            return;
         }
-
-        new Handler(Looper.getMainLooper()).postDelayed(safetyFinish, SAFETY_TIMEOUT_MS);
     }
 
     @Override
