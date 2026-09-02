@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Screenshot Button: Snap et Crop</string>
+    <string name="app_name">Screenshot Capture: Tap &amp; Crop</string>
     <!-- Titre court (toolbars + notification) : app_name est un nom de listing Play, trop long à afficher. -->
     <string name="shortAppName">Screenshot</string>
 

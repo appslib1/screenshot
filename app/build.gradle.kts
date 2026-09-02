@@ -10,15 +10,16 @@ android {
         applicationId = "com.screenshot_capture.screenshot_photo"
         minSdk = 21
         targetSdk = 36
-        versionCode = 25
-        versionName = "1.20"
+        versionCode = 27
+        versionName = "1.22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
