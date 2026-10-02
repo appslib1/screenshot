@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -35,8 +36,14 @@ import com.google.android.gms.ads.AdView;
 public class MainActivity extends AppCompatActivity {
     static final String CHANNEL_ID = "screenshot_silent_v1";
     static final int NOTIFICATION_ID = 101;
+    private static final int REQ_NOTIF = 100;
+    private static final int REQ_STORAGE = 102;
     private static final String KEY_BTN = "btn";
     private static final String KEY_NOTIFICATION = "notification";
+    // Un flag d'onboarding par mode : les 2 flows (notif vs overlay) ont des étapes et consents
+    // différents, l'utilisateur mérite une explication dédiée la première fois qu'il bascule.
+    private static final String KEY_ONBOARDED_NOTIF = "onboarded_notif_v1";
+    private static final String KEY_ONBOARDED_OVERLAY = "onboarded_overlay_v1";
     private static final String PREFS_NAME = "app_settings";
     private static final String PREF_NAME_AD = "adPrefs";
 
@@ -94,18 +101,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void turnOn() {
+        // Sur API 23-28, WRITE_EXTERNAL_STORAGE est une permission runtime et saveToPublicPictures()
+        // en a besoin pour écrire dans Pictures/Screenshots. Sans ça, chaque capture échoue
+        // silencieusement (toast « Capture failed ») — bug historique sur Yoga Tab 3, Galaxy S4-S6…
+        // Pré-M : install-time (toujours grantée). Q+ : MediaStore, pas besoin.
+        if (needsLegacyStoragePermission() && !hasLegacyStoragePermission()) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{"android.permission.WRITE_EXTERNAL_STORAGE"}, REQ_STORAGE);
+            return;
+        }
+
         boolean showNotif = prefs.getBoolean(KEY_NOTIFICATION, true);
         boolean showBtn = prefs.getBoolean(KEY_BTN, false);
 
+        // Première activation : on explique ce qui va se passer avant que l'app ne parte en arrière-plan.
+        // Sans ça, l'utilisateur tape « Turn on », voit l'app se fermer et croit que c'est cassé → uninstall.
+        // Le flag n'est persisté qu'une fois le flow réellement allé jusqu'au bout (perm accordée +
+        // session démarrée). Comme ça, si l'utilisateur refuse la perm derrière le dialog, il reverra
+        // l'explication au prochain « Turn on » plutôt que d'arriver direct sur un prompt système sans contexte.
+        String onboardKey = showNotif ? KEY_ONBOARDED_NOTIF : KEY_ONBOARDED_OVERLAY;
+        if ((showBtn || showNotif) && !prefs.getBoolean(onboardKey, false)) {
+            showOnboardingDialog(showNotif, () -> performTurnOn(showNotif, showBtn));
+            return;
+        }
+        performTurnOn(showNotif, showBtn);
+    }
+
+    private void performTurnOn(boolean showNotif, boolean showBtn) {
         if (showNotif) {
             if (hasNotificationPermission()) {
                 postCaptureNotification();
+                markOnboarded(KEY_ONBOARDED_NOTIF);
                 moveTaskToBack(true);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ActivityCompat.requestPermissions(this,
-                        new String[]{"android.permission.POST_NOTIFICATIONS"}, 100);
+                        new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIF);
             } else {
                 postCaptureNotification();
+                markOnboarded(KEY_ONBOARDED_NOTIF);
                 moveTaskToBack(true);
             }
         } else if (showBtn) {
@@ -113,9 +146,35 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void markOnboarded(String key) {
+        prefs.edit().putBoolean(key, true).apply();
+    }
+
+    private void showOnboardingDialog(boolean notifMode, Runnable then) {
+        int body = notifMode ? R.string.onboardingNotif : R.string.onboardingOverlay;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.onboardingTitle)
+                .setMessage(body)
+                .setPositiveButton(R.string.gotIt, (d, w) -> then.run())
+                // Pas annulable : on veut que l'utilisateur lise avant de perdre l'app en bg.
+                .setCancelable(false)
+                .show();
+    }
+
+    private static boolean needsLegacyStoragePermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P;
+    }
+
+    private boolean hasLegacyStoragePermission() {
+        return ActivityCompat.checkSelfPermission(this,
+                "android.permission.WRITE_EXTERNAL_STORAGE") == 0;
+    }
+
     private void launchFloatingButtonFlow() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
             FloatingButton.show(this);
+            markOnboarded(KEY_ONBOARDED_OVERLAY);
             moveTaskToBack(true);
         } else {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -129,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.overlayRequired, Toast.LENGTH_SHORT).show();
         } else {
             FloatingButton.show(this);
+            markOnboarded(KEY_ONBOARDED_OVERLAY);
             moveTaskToBack(true);
         }
     }
@@ -201,15 +261,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 100) {
+        if (requestCode == REQ_NOTIF) {
             if (grantResults.length > 0 && grantResults[0] == 0) {
                 postCaptureNotification();
+                markOnboarded(KEY_ONBOARDED_NOTIF);
                 moveTaskToBack(true);
             } else {
                 Toast.makeText(this, R.string.notificationPermissionDenied, Toast.LENGTH_LONG).show();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                         && !ActivityCompat.shouldShowRequestPermissionRationale(this, "android.permission.POST_NOTIFICATIONS")) {
                     openAppNotificationSettings();
+                }
+            }
+        } else if (requestCode == REQ_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == 0) {
+                // Grantée : on reprend le flow comme si l'utilisateur venait de taper « Turn on ».
+                turnOn();
+            } else {
+                Toast.makeText(this, R.string.storagePermissionDenied, Toast.LENGTH_LONG).show();
+                // « Don't ask again » coché : seul passage par les réglages système permet de revenir.
+                if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        "android.permission.WRITE_EXTERNAL_STORAGE")) {
+                    openAppDetailsSettings();
                 }
             }
         }
@@ -226,6 +299,13 @@ public class MainActivity extends AppCompatActivity {
         }
         try {
             startActivity(intent);
+        } catch (Exception ignored) {}
+    }
+
+    private void openAppDetailsSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
         } catch (Exception ignored) {}
     }
 

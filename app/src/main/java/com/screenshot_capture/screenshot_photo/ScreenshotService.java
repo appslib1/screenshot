@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -238,6 +239,11 @@ public class ScreenshotService extends Service {
         String savedPath = null;
         try {
             savedPath = save(img, screenWidth, screenHeight);
+        } catch (OutOfMemoryError oom) {
+            // Devices à faible RAM (ex: Yoga Tab 3 1 Go) peuvent échouer sur l'alloc du bitmap.
+            // On évite le crash hard : la capture est perdue, la session invalidée, l'user retente.
+            Log.e(TAG, "OOM during save()", oom);
+            notifyMain(R.string.captureFailed);
         } catch (Exception e) {
             Log.e(TAG, "save() threw", e);
             notifyMain(R.string.captureFailed);
@@ -396,6 +402,34 @@ public class ScreenshotService extends Service {
     }
 
     private String save(Image image, int width, int height) {
+        Bitmap bitmap = toBitmap(image, width, height);
+        if (bitmap == null) {
+            notifyMain(R.string.captureFailed);
+            return null;
+        }
+
+        String name = "Screenshot_"
+                + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date())
+                + ".png";
+
+        String identifier = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                ? saveViaMediaStore(bitmap, name)
+                : saveToPublicPictures(bitmap, name);
+
+        bitmap.recycle();
+        notifyMain(identifier != null ? R.string.screenshotSaved : R.string.captureFailed);
+        return identifier;
+    }
+
+    /**
+     * Convertit la frame {@link ImageReader} en bitmap aux dimensions exactes du screen.
+     * Fast path (rowPadding == 0, cas courant 1280×800 et autres résolutions alignées) :
+     * copie directe en un seul coup, un seul bitmap vivant.
+     * Slow path (buffer paddé par le pilote) : copie ligne par ligne dans un bitmap pré-dimensionné
+     * via {@link Bitmap#setPixels}, ce qui évite de garder un bitmap intermédiaire paddé vivant
+     * en même temps que le final — pic mémoire divisé par deux sur devices 1 Go.
+     */
+    private Bitmap toBitmap(Image image, int width, int height) {
         Image.Plane[] planes = image.getPlanes();
         ByteBuffer buffer = planes[0].getBuffer();
         buffer.rewind(); // l'image peut être réutilisée (cache) → position doit être à 0.
@@ -403,24 +437,36 @@ public class ScreenshotService extends Service {
         int rowStride = planes[0].getRowStride();
         int rowPadding = rowStride - pixelStride * width;
 
-        Bitmap raw = Bitmap.createBitmap(
-                width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
-        raw.copyPixelsFromBuffer(buffer);
+        if (rowPadding == 0) {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            bitmap.copyPixelsFromBuffer(buffer);
+            return bitmap;
+        }
 
-        Bitmap finalBitmap = (rowPadding == 0) ? raw : Bitmap.createBitmap(raw, 0, 0, width, height);
-        if (finalBitmap != raw) raw.recycle();
+        // RGBA_8888 = pixelStride 4. Si le pilote renvoie autre chose on ne gère pas → fallback nul.
+        if (pixelStride != 4) {
+            Log.w(TAG, "unexpected pixelStride=" + pixelStride);
+            return null;
+        }
 
-        String name = "Screenshot_"
-                + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date())
-                + ".png";
-
-        String identifier = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                ? saveViaMediaStore(finalBitmap, name)
-                : saveToPublicPictures(finalBitmap, name);
-
-        finalBitmap.recycle();
-        notifyMain(identifier != null ? R.string.screenshotSaved : R.string.captureFailed);
-        return identifier;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        IntBuffer intBuffer = buffer.asIntBuffer();
+        int bufferRowInts = rowStride / 4;
+        int[] rowPixels = new int[width];
+        for (int y = 0; y < height; y++) {
+            intBuffer.position(y * bufferRowInts);
+            intBuffer.get(rowPixels, 0, width);
+            // Bytes RGBA en mémoire → int little-endian 0xAABBGGRR.
+            // setPixels attend Color 0xAARRGGBB → swap R et B.
+            for (int x = 0; x < width; x++) {
+                int p = rowPixels[x];
+                rowPixels[x] = (p & 0xFF00FF00)
+                        | ((p & 0x000000FF) << 16)
+                        | ((p & 0x00FF0000) >>> 16);
+            }
+            bitmap.setPixels(rowPixels, 0, width, 0, y, width, 1);
+        }
+        return bitmap;
     }
 
     /** Q+ : insertion MediaStore dans Pictures/Screenshots avec le pattern IS_PENDING. */
