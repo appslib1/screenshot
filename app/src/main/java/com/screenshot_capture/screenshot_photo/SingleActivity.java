@@ -32,13 +32,14 @@ import java.util.List;
 
 public class SingleActivity extends AppCompatActivity {
 
-    private ImageButton homeBtn, browseBtn, shareBtn, cropBtn, deleteBtn;
+    private ImageButton homeBtn, browseBtn, shareBtn, cropBtn, annotateBtn, deleteBtn;
     private ViewPager2 viewPager;
     private ScreenshotPagerAdapter pagerAdapter;
     private final List<String> mediaList = new ArrayList<>();
     private int currentIndex = 0;
     private String fromList;
     private static final int REQUEST_CROP = 1001;
+    private static final int REQUEST_ANNOTATE = 1002;
     private FrameLayout adContainerView;
     private AdView adView;
 
@@ -86,6 +87,7 @@ public class SingleActivity extends AppCompatActivity {
         browseBtn = findViewById(R.id.browseBtn);
         shareBtn = findViewById(R.id.shareBtn);
         cropBtn = findViewById(R.id.cropBtn);
+        annotateBtn = findViewById(R.id.annotateBtn);
         deleteBtn = findViewById(R.id.deleteBtn);
 
         // Pager pour le swipe horizontal avec effet de glissement
@@ -105,6 +107,7 @@ public class SingleActivity extends AppCompatActivity {
         browseBtn.setOnClickListener(v -> startActivity(new Intent(this, ListActivity.class)));
         shareBtn.setOnClickListener(v -> shareImage());
         cropBtn.setOnClickListener(v -> cropImage());
+        annotateBtn.setOnClickListener(v -> annotateImage());
         deleteBtn.setOnClickListener(v -> deleteImageDialog());
 
         // État initial des boutons crop/suppression (masqués pour une capture externe).
@@ -123,6 +126,7 @@ public class SingleActivity extends AppCompatActivity {
     private void updateActionButtons() {
         boolean editable = ScreenshotLoader.isEditable(this, getCurrentItem());
         cropBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
+        annotateBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
         deleteBtn.setVisibility(editable ? View.VISIBLE : View.GONE);
     }
 
@@ -165,11 +169,20 @@ public class SingleActivity extends AppCompatActivity {
         startActivityForResult(intent, REQUEST_CROP);
     }
 
+    private void annotateImage() {
+        String item = getCurrentItem();
+        if (item == null || !ScreenshotLoader.isEditable(this, item)) return;
+        Intent intent = new Intent(this, AnnotateActivity.class);
+        intent.putExtra("img_uri", item);
+        startActivityForResult(intent, REQUEST_ANNOTATE);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CROP && resultCode == RESULT_OK) {
-            // The image was overwritten with the cropped version — reload the current page.
+        if ((requestCode == REQUEST_CROP || requestCode == REQUEST_ANNOTATE)
+                && resultCode == RESULT_OK) {
+            // The image was overwritten (crop or annotation) — reload the current page.
             pagerAdapter.notifyItemChanged(currentIndex);
         }
     }
