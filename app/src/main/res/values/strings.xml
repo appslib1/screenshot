@@ -17,6 +17,7 @@
     <string name="onboardingNotif">A silent notification will stay in your notification bar — that\'s your capture button.\n\n1. Pull down the notification bar from any screen.\n2. Tap the Screenshot notification to capture the screen you\'re on.\n3. First time only: Android will ask to allow screen recording — tap “Start now”.\n\nThis app is closing now so you can capture any screen you want.</string>
     <string name="onboardingOverlay">A floating button will appear on top of your screens — tap it to capture.\n\n1. Android will first ask to allow display over other apps.\n2. The floating button appears — tap it to capture any screen.\n3. Drag it to move it, drop it on ✕ to remove it.\n4. First capture also asks permission to record the screen — tap “Start now”.\n\nThis app is closing now so the button can appear everywhere.</string>
     <string name="gotIt">Got it</string>
+    <string name="previewAfterCapture">Screenshot preview</string>
     <!-- Modale de notation : titre/sous-titre changent selon le nombre d'étoiles. -->
     <string name="rateTitleIdle">Rate us to help us improve our apps!</string>
     <string name="rateTitleLow">Oh no!</string>

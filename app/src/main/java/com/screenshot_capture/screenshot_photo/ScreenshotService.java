@@ -416,9 +416,32 @@ public class ScreenshotService extends Service {
                 ? saveViaMediaStore(bitmap, name)
                 : saveToPublicPictures(bitmap, name);
 
+        if (identifier != null) {
+            // Preview flottante style iOS : miniature indépendante créée avant de recycler le
+            // bitmap plein. L'overlay garde ownership du thumb et le recycle à son dismiss.
+            postPreviewOverlay(bitmap, identifier);
+        }
         bitmap.recycle();
         notifyMain(identifier != null ? R.string.screenshotSaved : R.string.captureFailed);
         return identifier;
+    }
+
+    private void postPreviewOverlay(Bitmap source, String identifier) {
+        int targetWidth = (int) (120 * getResources().getDisplayMetrics().density);
+        Bitmap thumb;
+        if (source.getWidth() <= targetWidth) {
+            // Source déjà plus petite que la cible : on copie pour ne pas partager la ref
+            // avec le bitmap qui sera recyclé dans save().
+            thumb = source.copy(source.getConfig(), false);
+        } else {
+            float ratio = (float) source.getHeight() / source.getWidth();
+            int targetHeight = Math.max(1, Math.round(targetWidth * ratio));
+            Bitmap scaled = Bitmap.createScaledBitmap(source, targetWidth, targetHeight, true);
+            // createScaledBitmap renvoie source si les dims matchent : on force une copie dans ce cas.
+            thumb = (scaled == source) ? source.copy(source.getConfig(), false) : scaled;
+        }
+        new Handler(Looper.getMainLooper()).post(() ->
+                PreviewThumbnail.show(getApplicationContext(), thumb, identifier));
     }
 
     /**
