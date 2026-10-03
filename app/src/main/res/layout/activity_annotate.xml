@@ -22,47 +22,93 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Color swatches : visibles pour les outils colorés (texte, flèche). -->
-    <LinearLayout
-        android:id="@+id/colorBar"
+    <!-- Options contextuelles : color swatches pour texte/flèche, slider d'intensité pour blur.
+         Les deux occupent le même slot ; l'activity bascule la visibilité selon l'outil sélectionné. -->
+    <FrameLayout
+        android:id="@+id/toolOptionsBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/darkColor"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp">
+        android:background="@color/darkColor">
 
-        <View
-            android:id="@+id/colorRed"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_margin="6dp" />
+        <LinearLayout
+            android:id="@+id/colorBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
 
-        <View
-            android:id="@+id/colorYellow"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_margin="6dp" />
+            <View
+                android:id="@+id/colorRed"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_margin="6dp" />
 
-        <View
-            android:id="@+id/colorBlue"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_margin="6dp" />
+            <View
+                android:id="@+id/colorYellow"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_margin="6dp" />
 
-        <View
-            android:id="@+id/colorWhite"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_margin="6dp" />
+            <View
+                android:id="@+id/colorBlue"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_margin="6dp" />
 
-        <View
-            android:id="@+id/colorBlack"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_margin="6dp" />
-    </LinearLayout>
+            <View
+                android:id="@+id/colorWhite"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_margin="6dp" />
+
+            <View
+                android:id="@+id/colorBlack"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_margin="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/blurBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/blurLevelLabel"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+
+            <SeekBar
+                android:id="@+id/blurSeek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:max="3"
+                android:progress="1" />
+
+            <TextView
+                android:id="@+id/blurLevelName"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="@string/blurMed"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/annotateBottomBar"

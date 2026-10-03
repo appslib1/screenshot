@@ -28,6 +28,11 @@
     <string name="annotTextDialog">Add text</string>
     <string name="annotTextHint">Type here…</string>
     <string name="imageAnnotated">Annotations saved</string>
+    <string name="blurLevelLabel">Blur</string>
+    <string name="blurLow">Low</string>
+    <string name="blurMed">Medium</string>
+    <string name="blurHigh">High</string>
+    <string name="blurMax">Max</string>
     <!-- Modale de notation : titre/sous-titre changent selon le nombre d'étoiles. -->
     <string name="rateTitleIdle">Rate us to help us improve our apps!</string>
     <string name="rateTitleLow">Oh no!</string>

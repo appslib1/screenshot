@@ -12,6 +12,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -48,6 +50,10 @@ public class AnnotateActivity extends AppCompatActivity {
     private int[] swatchColors;
     private int selectedColorIndex = 0;
 
+    private View colorBar;
+    private View blurBar;
+    private TextView blurLevelName;
+
     private FrameLayout adContainerView;
     private AdView adView;
 
@@ -61,11 +67,11 @@ public class AnnotateActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         LinearLayout bottomBar = findViewById(R.id.annotateBottomBar);
-        LinearLayout colorBar = findViewById(R.id.colorBar);
+        FrameLayout toolOptionsBar = findViewById(R.id.toolOptionsBar);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.annotateRoot), (v, insets) -> {
             Insets sb = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             toolbar.setPadding(sb.left, sb.top, sb.right, 0);
-            colorBar.setPadding(sb.left, colorBar.getPaddingTop(), sb.right, colorBar.getPaddingBottom());
+            toolOptionsBar.setPadding(sb.left, 0, sb.right, 0);
             bottomBar.setPadding(sb.left, 0, sb.right, 0);
             adContainerView.setPadding(sb.left, 0, sb.right, sb.bottom);
             return insets;
@@ -106,6 +112,7 @@ public class AnnotateActivity extends AppCompatActivity {
 
         setupTools();
         setupColors();
+        setupBlurSlider();
         selectTool(AnnotateOverlayView.TOOL_ARROW);
 
         findViewById(R.id.undoBtn).setOnClickListener(v -> annotateView.undo());
@@ -126,10 +133,40 @@ public class AnnotateActivity extends AppCompatActivity {
         toolText.setSelected(tool == AnnotateOverlayView.TOOL_TEXT);
         toolArrow.setSelected(tool == AnnotateOverlayView.TOOL_ARROW);
         toolBlur.setSelected(tool == AnnotateOverlayView.TOOL_BLUR);
-        // La couleur n'a pas de sens pour la pixelation : on grise la bar pour l'indiquer.
-        View colorBar = findViewById(R.id.colorBar);
-        colorBar.setAlpha(tool == AnnotateOverlayView.TOOL_BLUR ? 0.35f : 1f);
-        for (View swatch : swatches) swatch.setEnabled(tool != AnnotateOverlayView.TOOL_BLUR);
+        // Options contextuelles : couleur pour texte/flèche, intensité pour blur.
+        boolean blurMode = tool == AnnotateOverlayView.TOOL_BLUR;
+        colorBar.setVisibility(blurMode ? View.GONE : View.VISIBLE);
+        blurBar.setVisibility(blurMode ? View.VISIBLE : View.GONE);
+    }
+
+    private void setupBlurSlider() {
+        colorBar = findViewById(R.id.colorBar);
+        blurBar = findViewById(R.id.blurBar);
+        blurLevelName = findViewById(R.id.blurLevelName);
+        SeekBar seek = findViewById(R.id.blurSeek);
+        seek.setMax(AnnotateOverlayView.BLUR_LEVELS - 1);
+        seek.setProgress(AnnotateOverlayView.BLUR_LEVEL_DEFAULT);
+        updateBlurLevelName(AnnotateOverlayView.BLUR_LEVEL_DEFAULT);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                // Rebuild le bitmap pixelisé à la volée : il est petit (~KB), c'est quasi-instant.
+                annotateView.setBlurLevel(progress);
+                updateBlurLevelName(progress);
+            }
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
+        });
+    }
+
+    private void updateBlurLevelName(int level) {
+        int res;
+        switch (level) {
+            case 0: res = R.string.blurLow; break;
+            case 1: res = R.string.blurMed; break;
+            case 2: res = R.string.blurHigh; break;
+            default: res = R.string.blurMax; break;
+        }
+        blurLevelName.setText(res);
     }
 
     private void setupColors() {

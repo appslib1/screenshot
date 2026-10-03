@@ -34,14 +34,19 @@ public class AnnotateOverlayView extends View {
     public static final int TOOL_ARROW = 1;
     public static final int TOOL_BLUR = 2;
 
+    public static final int BLUR_LEVELS = 4;
+    public static final int BLUR_LEVEL_DEFAULT = 1;
+
     public interface OnTextTapListener {
         /** Appelé quand l'utilisateur tape pour poser du texte : à l'activity d'afficher un input. */
         void onTextTap(float bitmapX, float bitmapY);
     }
 
     private Bitmap bitmap;
-    /** Version pixelisée de la source — même taille, mais composée de gros pixels. */
-    private Bitmap pixelated;
+    /** Version downsamplée de la source. Canvas.drawBitmap l'étire en nearest-neighbor au moment
+     * du dessin → effet pixelation sans conserver un bitmap pleine résolution en mémoire. */
+    private Bitmap small;
+    private int blurLevel = BLUR_LEVEL_DEFAULT;
 
     private final RectF imageRect = new RectF();
     private final float density;
@@ -63,6 +68,12 @@ public class AnnotateOverlayView extends View {
     private boolean dragging = false;
     private final PointF dragStartBmp = new PointF();
     private final PointF dragEndBmp = new PointF();
+
+    // Déplacement d'une annotation existante : la touch a hit un élément déjà posé → on la bouge
+    // au lieu d'en créer une nouvelle. On ne modifie pas l'ordre d'insertion pour que l'undo reste
+    // intuitif (= « enlève la dernière annotation ajoutée »).
+    private Annotation activeAnnotation = null;
+    private float lastDragBmpX, lastDragBmpY;
 
     public AnnotateOverlayView(Context context) {
         this(context, null);
@@ -102,14 +113,29 @@ public class AnnotateOverlayView extends View {
     public void setBitmap(Bitmap bmp) {
         this.bitmap = bmp;
         annotations.clear();
-        rebuildPixelated();
+        activeAnnotation = null;
+        rebuildSmall();
         requestLayout();
         invalidate();
+    }
+
+    /** 0 = fine (effet léger), {@link #BLUR_LEVELS}-1 = gros (effet fort). */
+    public void setBlurLevel(int level) {
+        int clamped = Math.max(0, Math.min(BLUR_LEVELS - 1, level));
+        if (clamped == blurLevel && small != null) return;
+        blurLevel = clamped;
+        rebuildSmall();
+        invalidate();
+    }
+
+    public int getBlurLevel() {
+        return blurLevel;
     }
 
     public void setTool(int tool) {
         currentTool = tool;
         dragging = false;
+        activeAnnotation = null;
         invalidate();
     }
 
@@ -123,7 +149,8 @@ public class AnnotateOverlayView extends View {
 
     public void undo() {
         if (!annotations.isEmpty()) {
-            annotations.remove(annotations.size() - 1);
+            Annotation removed = annotations.remove(annotations.size() - 1);
+            if (activeAnnotation == removed) activeAnnotation = null;
             invalidate();
         }
     }
@@ -146,19 +173,26 @@ public class AnnotateOverlayView extends View {
         invalidate();
     }
 
-    private void rebuildPixelated() {
-        if (pixelated != null && !pixelated.isRecycled()) {
-            pixelated.recycle();
+    private void rebuildSmall() {
+        if (small != null && !small.isRecycled()) {
+            small.recycle();
         }
-        pixelated = null;
+        small = null;
         if (bitmap == null) return;
-        // Tile de ~24 bitmap-px = beaux pixels visibles sur un screenshot standard.
-        int tile = Math.max(12, bitmap.getWidth() / 60);
+        int tile = tileSizeForLevel(blurLevel, bitmap.getWidth());
         int w = Math.max(1, bitmap.getWidth() / tile);
         int h = Math.max(1, bitmap.getHeight() / tile);
-        Bitmap small = Bitmap.createScaledBitmap(bitmap, w, h, false);
-        pixelated = Bitmap.createScaledBitmap(small, bitmap.getWidth(), bitmap.getHeight(), false);
-        if (small != pixelated) small.recycle();
+        small = Bitmap.createScaledBitmap(bitmap, w, h, true);
+    }
+
+    /** Mapping niveau → taille de tile en px bitmap. Croissance non-linéaire : chaque niveau ~2x. */
+    private static int tileSizeForLevel(int level, int bitmapWidth) {
+        switch (level) {
+            case 0: return Math.max(6, bitmapWidth / 120);  // léger
+            case 1: return Math.max(12, bitmapWidth / 60);  // moyen (défaut)
+            case 2: return Math.max(20, bitmapWidth / 35);  // fort
+            default: return Math.max(32, bitmapWidth / 20); // max
+        }
     }
 
     private void computeImageRect() {
@@ -220,10 +254,12 @@ public class AnnotateOverlayView extends View {
             float t = bmpToViewY(Math.min(b.y1, b.y2));
             float r = bmpToViewX(Math.max(b.x1, b.x2));
             float bo = bmpToViewY(Math.max(b.y1, b.y2));
-            if (pixelated != null) {
+            if (small != null) {
                 canvas.save();
                 canvas.clipRect(l, t, r, bo);
-                canvas.drawBitmap(pixelated, null, imageRect, pixelPaint);
+                // small stretché à imageRect en nearest-neighbor → gros pixels alignés sur
+                // le même « grid » que le flatten, et confinés par le clipRect au carré blur.
+                canvas.drawBitmap(small, null, imageRect, pixelPaint);
                 canvas.restore();
             }
         }
@@ -237,10 +273,12 @@ public class AnnotateOverlayView extends View {
         } else if (currentTool == TOOL_BLUR) {
             float l = Math.min(x1, x2), t = Math.min(y1, y2);
             float r = Math.max(x1, x2), bo = Math.max(y1, y2);
-            if (pixelated != null) {
+            if (small != null) {
                 canvas.save();
                 canvas.clipRect(l, t, r, bo);
-                canvas.drawBitmap(pixelated, null, imageRect, pixelPaint);
+                // small stretché à imageRect en nearest-neighbor → gros pixels alignés sur
+                // le même « grid » que le flatten, et confinés par le clipRect au carré blur.
+                canvas.drawBitmap(small, null, imageRect, pixelPaint);
                 canvas.restore();
             }
             canvas.drawRect(l, t, r, bo, blurOutlinePaint);
@@ -287,6 +325,16 @@ public class AnnotateOverlayView extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                // Priorité : si on tape sur une annotation existante (n'importe quel type,
+                // indépendamment de l'outil courant), on la déplace plutôt que d'en créer une.
+                Annotation hit = hitTest(bx, by);
+                if (hit != null) {
+                    activeAnnotation = hit;
+                    lastDragBmpX = bx;
+                    lastDragBmpY = by;
+                    invalidate();
+                    return true;
+                }
                 if (currentTool == TOOL_TEXT) {
                     // Rien à faire pendant le drag : le texte est posé sur ACTION_UP (= tap).
                     dragStartBmp.set(bx, by);
@@ -299,12 +347,25 @@ public class AnnotateOverlayView extends View {
                 return true;
 
             case MotionEvent.ACTION_MOVE:
+                if (activeAnnotation != null) {
+                    translateAnnotation(activeAnnotation, bx - lastDragBmpX, by - lastDragBmpY);
+                    lastDragBmpX = bx;
+                    lastDragBmpY = by;
+                    invalidate();
+                    return true;
+                }
                 if (currentTool == TOOL_TEXT) return true;
                 dragEndBmp.set(bx, by);
                 invalidate();
                 return true;
 
             case MotionEvent.ACTION_UP:
+                if (activeAnnotation != null) {
+                    // Déplacement terminé : l'annotation a déjà été mise à jour en place.
+                    activeAnnotation = null;
+                    invalidate();
+                    return true;
+                }
                 if (currentTool == TOOL_TEXT) {
                     if (textTapListener != null) {
                         textTapListener.onTextTap(dragStartBmp.x, dragStartBmp.y);
@@ -318,11 +379,75 @@ public class AnnotateOverlayView extends View {
                 return true;
 
             case MotionEvent.ACTION_CANCEL:
+                activeAnnotation = null;
                 dragging = false;
                 invalidate();
                 return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    /** Hit test en coords bitmap, ordre descendant (dernier dessiné = premier testé). */
+    private Annotation hitTest(float bx, float by) {
+        for (int i = annotations.size() - 1; i >= 0; i--) {
+            Annotation a = annotations.get(i);
+            if (a instanceof TextAnnotation && hitText((TextAnnotation) a, bx, by)) return a;
+            if (a instanceof ArrowAnnotation && hitArrow((ArrowAnnotation) a, bx, by)) return a;
+            if (a instanceof BlurAnnotation && hitBlur((BlurAnnotation) a, bx, by)) return a;
+        }
+        return null;
+    }
+
+    private boolean hitText(TextAnnotation t, float bx, float by) {
+        textPaint.setTextSize(t.textSizePx);
+        float width = textPaint.measureText(t.text);
+        Paint.FontMetrics fm = textPaint.getFontMetrics();
+        float height = fm.descent - fm.ascent;
+        // Padding généreux pour que la cible soit confortable au doigt même sur petit texte.
+        float pad = Math.max(t.textSizePx * 0.3f,
+                12f * density * (bitmap.getWidth() / Math.max(1f, imageRect.width())));
+        return bx >= t.x - pad && bx <= t.x + width + pad
+                && by >= t.y - pad && by <= t.y + height + pad;
+    }
+
+    private boolean hitArrow(ArrowAnnotation a, float bx, float by) {
+        // Zone de hit = max(stroke * 4, 2% largeur image) → confortable au doigt même pour trait fin.
+        float threshold = Math.max(a.strokeWidthPx * 4f, bitmap.getWidth() * 0.02f);
+        return pointToSegmentDist(bx, by, a.x1, a.y1, a.x2, a.y2) < threshold;
+    }
+
+    private boolean hitBlur(BlurAnnotation b, float bx, float by) {
+        float l = Math.min(b.x1, b.x2), t = Math.min(b.y1, b.y2);
+        float r = Math.max(b.x1, b.x2), bo = Math.max(b.y1, b.y2);
+        return bx >= l && bx <= r && by >= t && by <= bo;
+    }
+
+    private static float pointToSegmentDist(float px, float py,
+                                            float x1, float y1, float x2, float y2) {
+        float dx = x2 - x1, dy = y2 - y1;
+        float lenSq = dx * dx + dy * dy;
+        if (lenSq == 0f) return (float) Math.hypot(px - x1, py - y1);
+        float t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+        t = Math.max(0f, Math.min(1f, t));
+        float cx = x1 + t * dx;
+        float cy = y1 + t * dy;
+        return (float) Math.hypot(px - cx, py - cy);
+    }
+
+    private void translateAnnotation(Annotation a, float dx, float dy) {
+        if (a instanceof TextAnnotation) {
+            TextAnnotation t = (TextAnnotation) a;
+            t.x += dx;
+            t.y += dy;
+        } else if (a instanceof ArrowAnnotation) {
+            ArrowAnnotation ar = (ArrowAnnotation) a;
+            ar.x1 += dx; ar.y1 += dy;
+            ar.x2 += dx; ar.y2 += dy;
+        } else if (a instanceof BlurAnnotation) {
+            BlurAnnotation b = (BlurAnnotation) a;
+            b.x1 += dx; b.y1 += dy;
+            b.x2 += dx; b.y2 += dy;
+        }
     }
 
     private void commitDragAnnotation() {
@@ -411,12 +536,13 @@ public class AnnotateOverlayView extends View {
                 canvas.drawPath(head, fp);
             } else if (a instanceof BlurAnnotation) {
                 BlurAnnotation b = (BlurAnnotation) a;
-                if (pixelated == null) continue;
+                if (small == null) continue;
                 int l = Math.round(b.x1), t = Math.round(b.y1);
                 int r = Math.round(b.x2), bo = Math.round(b.y2);
                 canvas.save();
                 canvas.clipRect(l, t, r, bo);
-                canvas.drawBitmap(pixelated, 0, 0, pixelPaint);
+                canvas.drawBitmap(small, null,
+                        new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight()), pixelPaint);
                 canvas.restore();
             }
         }
@@ -424,10 +550,10 @@ public class AnnotateOverlayView extends View {
     }
 
     public void releaseResources() {
-        if (pixelated != null && !pixelated.isRecycled()) {
-            pixelated.recycle();
+        if (small != null && !small.isRecycled()) {
+            small.recycle();
         }
-        pixelated = null;
+        small = null;
     }
 
     // --- Modèle ---
