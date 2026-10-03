@@ -77,13 +77,13 @@ public class SettingsActivity extends AppCompatActivity {
 
         // Chargement des valeurs sauvegardées. Les deux sources de capture s'excluent :
         // si l'état stocké est incohérent (les deux à on ou les deux à off), on retombe
-        // sur la notification, sinon « Turn on » n'aurait plus rien à lancer.
-        boolean notification = prefs.getBoolean(KEY_NOTIFICATION, true);
-        boolean btn = prefs.getBoolean(KEY_BTN, false);
+        // sur le mode overlay (défaut à l'install), sinon « Turn on » n'aurait plus rien à lancer.
+        boolean btn = prefs.getBoolean(KEY_BTN, true);
+        boolean notification = prefs.getBoolean(KEY_NOTIFICATION, false);
         boolean fixed = (notification == btn);
         if (fixed) {
-            notification = true;
-            btn = false;
+            btn = true;
+            notification = false;
         }
         notificationSwitch.setChecked(notification);
         btnSwitch.setChecked(btn);

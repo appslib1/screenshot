@@ -30,6 +30,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -450,14 +451,27 @@ public class ScreenshotService extends Service {
                 ? saveViaMediaStore(bitmap, name)
                 : saveToPublicPictures(bitmap, name);
 
-        if (identifier != null) {
+        boolean willShowPreview = identifier != null && canShowOverlay();
+        if (willShowPreview) {
             // Preview flottante style iOS : miniature indépendante créée avant de recycler le
             // bitmap plein. L'overlay garde ownership du thumb et le recycle à son dismiss.
             postPreviewOverlay(bitmap, identifier);
         }
         bitmap.recycle();
-        notifyMain(identifier != null ? R.string.screenshotSaved : R.string.captureFailed);
+
+        // La preview flottante EST le feedback visuel « screenshot saved » : si elle s'affiche,
+        // on skip le toast pour ne pas doubler. Si pas d'overlay perm (user en mode notif
+        // uniquement, ou perm refusée), le toast reste la seule confirmation.
+        if (identifier == null) {
+            notifyMain(R.string.captureFailed);
+        } else if (!willShowPreview) {
+            notifyMain(R.string.screenshotSaved);
+        }
         return identifier;
+    }
+
+    private boolean canShowOverlay() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
     }
 
     private void postPreviewOverlay(Bitmap source, String identifier) {

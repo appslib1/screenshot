@@ -112,8 +112,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        boolean showNotif = prefs.getBoolean(KEY_NOTIFICATION, true);
-        boolean showBtn = prefs.getBoolean(KEY_BTN, false);
+        // Overlay (bouton flottant) actif par défaut à l'install : plus visible et plus
+        // intuitif qu'une notif discrète pour un nouvel utilisateur. L'utilisateur peut
+        // toujours basculer vers le mode notification depuis Settings.
+        boolean showBtn = prefs.getBoolean(KEY_BTN, true);
+        boolean showNotif = prefs.getBoolean(KEY_NOTIFICATION, false);
 
         // Première activation : on explique ce qui va se passer avant que l'app ne parte en arrière-plan.
         // Sans ça, l'utilisateur tape « Turn on », voit l'app se fermer et croit que c'est cassé → uninstall.
