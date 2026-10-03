@@ -77,8 +77,18 @@ public class SingleActivity extends AppCompatActivity {
         fromList = getIntent().getStringExtra("fromList");
 
         if (imgUriPath != null) {
-            currentIndex = mediaList.indexOf(imgUriPath);
-            if (currentIndex == -1) currentIndex = 0;
+            int idx = mediaList.indexOf(imgUriPath);
+            if (idx == -1) {
+                // Item pas listé par ScreenshotLoader.loadAll() : typiquement READ_MEDIA_IMAGES
+                // pas (encore) accordée, donc la lecture du dossier public « Screenshots » est
+                // skippée et la liste peut être vide même après une capture fraîche. On force
+                // l'ajout de notre item pour que le pager affiche au moins cette capture →
+                // plus de page blanche quand on tape la preview sans avoir donné la perm média.
+                mediaList.add(0, imgUriPath);
+                currentIndex = 0;
+            } else {
+                currentIndex = idx;
+            }
         }
 
         // Initialisation des vues
@@ -240,9 +250,23 @@ public class SingleActivity extends AppCompatActivity {
 
     private void loadBanner() {
         if (adContainerView == null) return;
+        // Le conteneur reste GONE (aucun espace réservé) tant qu'une pub n'est pas réellement
+        // chargée : on l'affiche dans onAdLoaded, on le laisse masqué si le chargement échoue.
+        adContainerView.setVisibility(View.GONE);
         adView = new AdView(this);
         adView.setAdUnitId(getString(R.string.banner));
         adView.setAdSize(getAdSize());
+        adView.setAdListener(new com.google.android.gms.ads.AdListener() {
+            @Override
+            public void onAdLoaded() {
+                adContainerView.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onAdFailedToLoad(com.google.android.gms.ads.LoadAdError error) {
+                adContainerView.setVisibility(View.GONE);
+            }
+        });
         adContainerView.removeAllViews();
         adContainerView.addView(adView);
         adView.loadAd(new AdRequest.Builder().build());

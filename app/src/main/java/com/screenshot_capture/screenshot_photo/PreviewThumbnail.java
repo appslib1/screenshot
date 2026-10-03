@@ -7,6 +7,7 @@ import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -30,6 +31,7 @@ public final class PreviewThumbnail {
     private static View view;
     private static WindowManager wm;
     private static Bitmap currentThumb;
+    private static long lastClickAt;
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static final Runnable autoDismiss = PreviewThumbnail::hide;
 
@@ -75,6 +77,12 @@ public final class PreviewThumbnail {
         params.y = (int) (24 * dp);
 
         view.setOnClickListener(v -> {
+            // Debounce : si la session système tente un double-dispatch (anciens bugs sur
+            // certaines versions), on garantit un seul startActivity → pas de double splash
+            // qui provoquait BadTokenException côté SplashscreenWindowCreator.
+            long now = SystemClock.uptimeMillis();
+            if (now - lastClickAt < 800L) return;
+            lastClickAt = now;
             try {
                 Intent intent = new Intent(app, SingleActivity.class)
                         .putExtra("img_uri", screenshotId)
@@ -85,6 +93,10 @@ public final class PreviewThumbnail {
         });
 
         // Swipe horizontal pour dismiss anticipé (fluide : on suit le doigt, alpha baisse avec dx).
+        // On retourne TRUE partout pour consommer tout le stream touch → la détection de click
+        // par défaut de View.onTouchEvent ne tirera PAS performClick en plus du nôtre. Sans ça,
+        // chaque tap provoquait deux startActivity rapides et le système plantait côté
+        // SplashscreenWindowCreator (« window has already been added »).
         view.setOnTouchListener(new View.OnTouchListener() {
             final int touchSlop = ViewConfiguration.get(app).getScaledTouchSlop();
             final int dismissDistance = (int) (72 * dp);
@@ -98,15 +110,14 @@ public final class PreviewThumbnail {
                         startX = e.getRawX();
                         startY = e.getRawY();
                         dragging = false;
-                        // Dès qu'on touche la preview, on désactive l'auto-dismiss :
-                        // l'utilisateur est en train d'interagir, pas la peine de la lui enlever.
+                        // Pendant l'interaction on désactive l'auto-dismiss.
                         mainHandler.removeCallbacks(autoDismiss);
-                        return false;
+                        return true;
                     case MotionEvent.ACTION_MOVE:
                         float dx = e.getRawX() - startX;
                         float dy = e.getRawY() - startY;
                         if (!dragging && Math.abs(dx) < touchSlop && Math.abs(dy) < touchSlop) {
-                            return false;
+                            return true;
                         }
                         dragging = true;
                         v.setTranslationX(dx);
@@ -114,11 +125,11 @@ public final class PreviewThumbnail {
                         v.setAlpha(Math.max(0f, 1f - Math.abs(dx) / fadeRange));
                         return true;
                     case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
                         if (!dragging) {
-                            // Simple tap : on laisse OnClickListener gérer.
+                            // Tap simple : on déclenche le click une seule fois. L'event étant
+                            // consommé (return true), onTouchEvent ne le retriggera pas.
                             v.performClick();
-                            return false;
+                            return true;
                         }
                         float totalDx = e.getRawX() - startX;
                         if (Math.abs(totalDx) >= dismissDistance) {
@@ -128,6 +139,10 @@ public final class PreviewThumbnail {
                             v.animate().translationX(0f).alpha(1f).setDuration(120).start();
                             mainHandler.postDelayed(autoDismiss, AUTO_DISMISS_MS);
                         }
+                        return true;
+                    case MotionEvent.ACTION_CANCEL:
+                        v.animate().translationX(0f).alpha(1f).setDuration(120).start();
+                        mainHandler.postDelayed(autoDismiss, AUTO_DISMISS_MS);
                         return true;
                 }
                 return false;
@@ -154,17 +169,13 @@ public final class PreviewThumbnail {
         if (view == null || wm == null) {
             view = null;
             wm = null;
-            if (currentThumb != null) {
-                try { currentThumb.recycle(); } catch (Exception ignored) {}
-                currentThumb = null;
-            }
+            currentThumb = null;
             return;
         }
         // Fade out puis removeView : les refs statiques sont effacées immédiatement pour qu'une
         // nouvelle capture pendant l'animation puisse réinstaller une nouvelle preview sans conflit.
         final View v = view;
         final WindowManager w = wm;
-        final Bitmap thumbRef = currentThumb;
         view = null;
         wm = null;
         currentThumb = null;
@@ -172,10 +183,16 @@ public final class PreviewThumbnail {
                 .alpha(0f)
                 .setDuration(FADE_OUT_MS)
                 .withEndAction(() -> {
+                    // D'abord détacher le bitmap de l'ImageView : WindowManager.removeView est
+                    // asynchrone sur certaines versions, un frame en vol peut encore essayer de
+                    // dessiner. En mettant le drawable à null on garantit qu'aucun draw tardif
+                    // ne touchera un bitmap. Le bitmap sera libéré par le GC quand plus rien
+                    // ne le référence (~80 KB, pas d'enjeu mémoire).
+                    try {
+                        ImageView img = v.findViewById(R.id.previewImage);
+                        if (img != null) img.setImageDrawable(null);
+                    } catch (Exception ignored) {}
                     try { w.removeView(v); } catch (Exception ignored) {}
-                    if (thumbRef != null) {
-                        try { thumbRef.recycle(); } catch (Exception ignored) {}
-                    }
                 })
                 .start();
     }

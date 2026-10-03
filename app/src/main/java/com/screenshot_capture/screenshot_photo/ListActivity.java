@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -148,9 +149,23 @@ public class ListActivity extends AppCompatActivity {
 
     private void loadBanner() {
         if (adContainerView == null) return;
+        // Le conteneur reste GONE (aucun espace réservé) tant qu'une pub n'est pas réellement
+        // chargée : on l'affiche dans onAdLoaded, on le laisse masqué si le chargement échoue.
+        adContainerView.setVisibility(View.GONE);
         adView = new AdView(this);
         adView.setAdUnitId(getString(R.string.banner));
         adView.setAdSize(getAdSize());
+        adView.setAdListener(new com.google.android.gms.ads.AdListener() {
+            @Override
+            public void onAdLoaded() {
+                adContainerView.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onAdFailedToLoad(com.google.android.gms.ads.LoadAdError error) {
+                adContainerView.setVisibility(View.GONE);
+            }
+        });
         adContainerView.removeAllViews();
         adContainerView.addView(adView);
         adView.loadAd(new AdRequest.Builder().build());
