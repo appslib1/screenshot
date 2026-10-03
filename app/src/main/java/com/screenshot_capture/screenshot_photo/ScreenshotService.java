@@ -394,11 +394,45 @@ public class ScreenshotService extends Service {
         }
         sendBroadcast(done);
         Log.d(TAG, "broadcast CAPTURE_DONE path=" + pathOrNull + " mode=" + mode);
-        // La MediaProjection reste vivante pour la prochaine capture (pas de nouveau consent).
-        // La notification reste visible tant que la session est active (obligatoire pour
-        // le foregroundServiceType=mediaProjection).
         capturing = false;
-        updateNotificationText(getString(R.string.clickToTakeScreenshot));
+        // Tear down la session après chaque capture pour que l'indicateur système
+        // d'enregistrement d'écran (chip persistante avec timer) disparaisse. La notif reste
+        // affichée pour que l'user retape → nouveau consent → nouvelle capture.
+        // Trade-off : un consent par capture, mais plus d'indicateur permanent qui inquiète
+        // les users et vide la batterie. Pattern forcé de toute façon par Android 14+.
+        teardownAfterCapture();
+    }
+
+    private void teardownAfterCapture() {
+        // 1. Libère VD + reader + projection → l'indicateur système disparaît
+        invalidateSession();
+        // 2. Repost la notif en mode « idle » (sans bouton Stop puisque la session est morte)
+        //    avant de sortir de foreground, pour qu'elle reste affichée en tant que notif normale.
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.notify(NOTIFICATION_ID, buildIdleNotification());
+        } catch (Exception ignored) {}
+        // 3. Sort du FGS tout en gardant la notif visible, puis stoppe le service.
+        //    Prochaine capture = CaptureTriggerActivity relance tout proprement via le consent.
+        stopForegroundDetach();
+        stopSelf();
+    }
+
+    private Notification buildIdleNotification() {
+        Intent trigger = new Intent(this, CaptureTriggerActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent triggerPi = PendingIntent.getActivity(this, 1, trigger,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.baseline_crop_free_24)
+                .setContentTitle(getString(R.string.shortAppName))
+                .setContentText(getString(R.string.clickToTakeScreenshot))
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .setOngoing(true)
+                .setContentIntent(triggerPi)
+                .build();
     }
 
     private String save(Image image, int width, int height) {
